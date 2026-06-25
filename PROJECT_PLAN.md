@@ -1,187 +1,91 @@
-# Project Plan: Hierarchical Resume-to-Job Application Agent
+# Project Plan: Resume Builder, Optimizer, Job Application Agent, and Email Alert System
 
 ## Overview
 
-This project is a local prototype for a hierarchical multi-agent job search and application system. The application guides a user from resume intake through ATS scoring, resume improvement, job discovery, match scoring, threshold-based application automation, and follow-up resume refinement for lower-match jobs.
+Create a local prototype of a resume builder, optimizer, job application agent, and email alert system using a **mixed hierarchical agent architecture** built on the **Google Agent Development Kit (ADK)**, **Streamlit** for the frontend, **Playwright** for browser automation, and **smtplib** for email notifications.
 
-The intended interface is a user-facing app where the user uploads a resume, provides a LinkedIn profile link, reviews ATS feedback, chooses whether to implement suggested resume improvements, enters job search preferences, and controls when automated applications are allowed.
+The system keeps the current resume-to-job workflow:
 
-## Target Workflow
+1. The user uploads a resume and enters a LinkedIn profile link.
+2. The system scores the current resume for ATS readiness.
+3. The system suggests resume changes that can improve the score.
+4. If the user chooses to implement the changes, the system shows the projected improved ATS score.
+5. After the user approves or skips changes, the user enters the type of job they want, when the job was posted, and where the job is located.
+6. The system searches the internet for matching job postings.
+7. The system generates a match percentage between the resume and each job posting.
+8. The system shows missing skills and keywords for each job posting.
+9. The user chooses whether automatic applications are allowed above a user-defined match threshold.
+10. The system applies to qualifying jobs when permitted.
+11. The system lists lower-match jobs that did not meet the threshold.
+12. The system prompts the user to confirm whether they have experience with missing skills.
+13. If the user has relevant experience, the user writes short experience notes.
+14. The system updates the resume only with confirmed experience and generates a new match rating.
+15. If the new match rating satisfies the original threshold, the system applies automatically.
+16. The system can send email alerts with job matches, application results, and follow-up items.
 
-1. The user uploads their resume and enters their LinkedIn profile link.
-2. The ATS Analyzer Agent scores the current resume.
-3. The Resume Improvement Agent suggests changes that would improve the resume.
-4. If the user chooses to implement the suggestions, the agent shows the projected improved ATS score.
-5. After the user implements or approves the changes, the user enters:
-   - type of job they are looking for
-   - when the job was posted
-   - job location
-6. The Job Search Agent searches the internet for matching job postings.
-7. The Match Analyzer Agent generates a match percentage between the resume and each job posting.
-8. The Match Analyzer Agent lists missing skills and keywords for each job posting.
-9. The user chooses whether to allow automatic applications for jobs above a user-defined match threshold.
-10. The Application Agent applies to job postings that meet or exceed the threshold.
-11. The Lower-Match Review Agent lists remaining jobs below the threshold.
-12. The Lower-Match Review Agent shows missing skills and keywords for each lower-match job.
-13. The user is prompted to confirm whether they have experience with the missing skills.
-14. If the user has relevant experience, the user writes short experience notes for those skills.
-15. The Resume Improvement Agent updates the resume with truthful skill evidence and generates a new match rating.
-16. If the new match rating satisfies the original user-defined threshold, the Application Agent applies automatically.
+## Architecture Goal
 
-## Hierarchical Multi-Agent Architecture
+Use the least number of agents that still keeps responsibilities clean and auditable.
 
-The system uses a parent Coordinator Agent that supervises specialist subagents. Each subagent has a narrow responsibility to reduce task overlap and keep the workflow auditable.
+The MVP architecture uses four agents total:
+
+1. **Coordinator Agent**: parent agent and workflow controller.
+2. **Resume Agent**: resume builder, parser, ATS optimizer, and resume version manager.
+3. **Job Intelligence Agent**: job search, job matching, missing skill analysis, and email alert preparation.
+4. **Application Agent**: browser automation, application submission workflow, human-in-the-loop prompts, and application logging.
+
+This is a mixed hierarchy because the Coordinator Agent owns the workflow and delegates to specialist agents, while each specialist agent has multiple skills/tools it can use directly.
+
+## Technology Stack
+
+- **Google ADK**: agent definitions, parent/sub-agent hierarchy, tool calling, state handoff, and evaluation hooks.
+- **Streamlit**: local frontend for resume upload, workflow review, approvals, threshold settings, and application status.
+- **Playwright**: browser automation for job search, job page extraction, and supported application flows.
+- **smtplib**: email notifications for job alerts, application summaries, and items needing user action.
+- **Python document tooling**: PDF, DOCX, and TXT parsing plus resume export when implemented.
+- **Local JSON or SQLite state**: MVP persistence for workflow state, resume versions, job postings, match results, and application logs.
+
+## Agent Architecture
 
 ### 1. Coordinator Agent
 
-Role: parent entrypoint, state manager, and guardrail.
+Role: parent agent, workflow router, and guardrail owner.
 
 Responsibilities:
 
-- Orchestrates the full workflow from intake through applications.
-- Routes work to the correct specialist subagent.
-- Tracks the current resume version, ATS score, job search criteria, match threshold, and application status.
-- Requires user confirmation before implementing resume changes or enabling automatic applications.
-- Blocks off-topic requests that are unrelated to career search, resume improvement, or job applications.
-- Enforces workflow order so users complete resume intake and scoring before job search and auto-apply.
+- Own the end-to-end workflow state.
+- Route work to the Resume Agent, Job Intelligence Agent, or Application Agent.
+- Enforce the workflow order.
+- Require user confirmation before:
+  - applying resume changes
+  - using LinkedIn data that requires authentication
+  - enabling automatic applications
+  - setting or changing the match threshold
+  - adding missing skills to the resume
+  - answering unknown application questions
+  - submitting any final application when semi-automated safety mode is enabled
+- Block off-topic requests unrelated to resume building, job search, job matching, or applications.
+- Keep the user-facing Streamlit flow synchronized with backend state.
 
-### 2. Resume Intake Agent
+Skills/tools used by this agent:
 
-Role: resume and LinkedIn profile ingestion.
+- `route_workflow_step`
+- `validate_workflow_state`
+- `request_user_confirmation`
+- `write_status_update`
+- `log_audit_event`
 
-Responsibilities:
+### 2. Resume Agent
 
-- Accepts resume uploads in PDF, DOCX, or TXT format.
-- Extracts structured resume data including education, experience, projects, skills, certifications, and contact details.
-- Accepts and stores a LinkedIn profile link.
-- Uses LinkedIn content only when the user provides accessible text, exported profile data, or explicit authenticated access.
-- Produces a normalized candidate profile for downstream agents.
+Role: resume builder, optimizer, ATS scorer, and resume version manager.
 
-### 3. ATS Analyzer Agent
-
-Role: baseline and projected ATS scoring.
-
-Responsibilities:
-
-- Scores the current resume using ATS-style criteria.
-- Explains the score using concrete categories such as formatting, keyword coverage, role relevance, measurable impact, skills clarity, and experience alignment.
-- Produces an initial score before any changes.
-- Produces a projected improved score when suggested changes are selected.
-- Does not claim that any score guarantees interview selection.
-
-### 4. Resume Improvement Agent
-
-Role: resume improvement and truthful tailoring.
+This agent combines the old Resume Intake, ATS Analyzer, and Resume Improvement responsibilities to reduce agent count.
 
 Responsibilities:
 
-- Suggests changes that improve ATS readability and role alignment.
-- Rewrites bullets only from facts provided by the user.
-- Adds missing skills only when the user confirms real experience and provides supporting details.
-- Maintains version history between the original resume, suggested revision, approved revision, and job-specific revision.
-- Exports improved resumes when document generation is implemented.
-
-### 5. Job Search Agent
-
-Role: internet job discovery.
-
-Responsibilities:
-
-- Searches for job postings based on the user's target job type, posting date filter, and location.
-- Captures job title, company, location, posting date, source URL, description, and application URL when available.
-- Deduplicates postings across sources.
-- Flags postings that require external login, manual review, or unsupported application flows.
-
-### 6. Match Analyzer Agent
-
-Role: resume-to-job comparison.
-
-Responsibilities:
-
-- Calculates a match percentage for each job posting.
-- Lists matched skills, missing skills, missing keywords, and experience gaps.
-- Separates hard requirements from preferred qualifications when the job description supports it.
-- Ranks postings by match percentage.
-- Re-runs matching after resume updates.
-
-### 7. Application Agent
-
-Role: controlled application automation.
-
-Responsibilities:
-
-- Applies only to jobs that meet or exceed the user-defined match threshold.
-- Requires explicit user opt-in before automatic applications are enabled.
-- Uses the latest approved resume version.
-- Handles supported application flows such as LinkedIn Easy Apply, Greenhouse, Lever, and Workday where technically feasible.
-- Pauses for user input on unknown application questions.
-- Logs every attempted, completed, skipped, and failed application.
-
-### 8. Lower-Match Review Agent
-
-Role: second-pass review of jobs below the threshold.
-
-Responsibilities:
-
-- Lists remaining jobs below the user-defined threshold.
-- Shows why each job did not meet the threshold.
-- Prompts the user to confirm whether they have experience with the missing skills.
-- Collects user-written experience notes for confirmed skills.
-- Sends confirmed information to the Resume Improvement Agent for truthful updates.
-
-## User Confirmation Points
-
-The system must stop and ask the user before:
-
-- implementing suggested resume changes
-- using LinkedIn data that requires authenticated access
-- enabling automatic applications
-- selecting or changing the match threshold
-- applying to any job when the application flow includes unknown questions
-- adding a missing skill to the resume
-- submitting any final application if the implementation uses a semi-automated safety mode
-
-## Data Model
-
-The workflow should persist these core records:
-
-- `candidate_profile`: parsed resume data and LinkedIn profile reference
-- `resume_versions`: original, suggested, approved, and job-specific resumes
-- `ats_scores`: baseline score, projected score, and final score after approved changes
-- `job_search_criteria`: target job type, posting age/date, and location
-- `job_postings`: discovered jobs and source metadata
-- `match_results`: match percentage, matched skills, missing skills, missing keywords, and rationale
-- `application_threshold`: user-defined minimum match percentage for auto-apply
-- `application_log`: applied, skipped, failed, and pending jobs
-- `missing_skill_responses`: user-confirmed experience notes for lower-match jobs
-
-## Implementation Phases
-
-### Phase 1: Workflow Foundation
-
-- Define shared workflow state for resume, LinkedIn link, ATS scores, job criteria, matches, threshold, and applications.
-- Implement Coordinator Agent routing for the full ordered workflow.
-- Add guardrails that prevent off-topic requests and fabricated resume content.
-- Add resume version tracking for original, suggested, approved, and job-specific resumes.
-- Add application and resume-change audit logging.
-- Add clear status values for each workflow step:
-  - `resume_uploaded`
-  - `baseline_scored`
-  - `changes_suggested`
-  - `changes_approved`
-  - `search_criteria_entered`
-  - `jobs_found`
-  - `threshold_set`
-  - `auto_apply_enabled`
-  - `applications_processed`
-  - `lower_match_review_started`
-  - `resume_updated_from_missing_skills`
-
-### Phase 2: Resume and LinkedIn Intake
-
-- Build resume upload support for PDF, DOCX, and TXT.
-- Extract raw resume text from uploaded files.
-- Parse structured resume data:
+- Accept resume uploads in PDF, DOCX, or TXT format.
+- Extract raw resume text.
+- Parse structured candidate data:
   - contact information
   - summary
   - skills
@@ -189,266 +93,336 @@ The workflow should persist these core records:
   - education
   - projects
   - certifications
-- Add LinkedIn profile link input and validation.
-- Store LinkedIn as a profile reference unless the user provides accessible LinkedIn content or explicit authenticated access.
+- Accept and validate the LinkedIn profile link.
+- Store LinkedIn as a reference unless the user provides accessible LinkedIn text, exported data, or explicit authenticated access.
+- Generate a baseline ATS score.
+- Suggest truthful resume improvements.
+- Show projected ATS score if the user chooses to implement changes.
+- Create improved resume versions after user approval.
+- Update the resume only with user-confirmed missing-skill experience.
+- Export resumes to DOCX or PDF when export support is implemented.
 
-### Phase 3: Baseline ATS Scoring
+Skills/tools used by this agent:
 
-- Implement ATS Analyzer Agent scoring for the current resume.
-- Add ATS score categories for:
-  - formatting
-  - completeness
-  - keyword coverage
-  - skills visibility
-  - measurable impact
-  - role clarity
-  - grammar and consistency
-- Display baseline ATS score from 0 to 100.
-- Display score rationale and top improvement areas.
+- `parse_resume_file`
+- `extract_resume_text`
+- `validate_linkedin_url`
+- `normalize_candidate_profile`
+- `score_resume_ats`
+- `suggest_resume_improvements`
+- `project_improved_ats_score`
+- `apply_approved_resume_changes`
+- `update_resume_with_confirmed_experience`
+- `export_resume_docx`
+- `export_resume_pdf`
 
-### Phase 4: Resume Improvement Loop
+### 3. Job Intelligence Agent
 
-- Implement Resume Improvement Agent suggestions.
-- Separate suggestions by formatting, wording, keywords, missing details, and optional role-specific improvements.
-- Show proposed changes before applying them.
-- Add user approval or skip controls.
-- Generate projected improved ATS score if the user chooses to implement changes.
-- Apply approved changes and create a new resume version.
-- Preserve the original resume for comparison and rollback.
+Role: job discovery, job matching, missing skill analysis, and email alert preparation.
 
-### Phase 5: Job Search Criteria
+This agent combines the old Job Search, Match Analyzer, Lower-Match Review, and email-alert responsibilities to reduce agent count.
 
-After resume changes are approved or skipped, prompt the user for:
+Responsibilities:
 
-- target job type or role
-- posting date filter, such as today, past 24 hours, past week, or custom date
-- job location, including remote, hybrid, city, state, or country
-
-Validate search criteria before starting job search.
-
-### Phase 6: Internet Job Search
-
-- Implement Job Search Agent for internet job discovery.
-- Capture for each posting:
+- Accept job search criteria:
+  - target job type or role
+  - posting date filter
+  - job location
+- Search the internet for job postings using Playwright-backed tools.
+- Extract job details:
   - title
   - company
   - location
   - posting date
-  - source
-  - job URL
+  - source URL
   - application URL
   - job description text
 - Deduplicate jobs by company, title, location, and URL.
-- Flag postings that require login, manual review, or unsupported application flows.
-
-### Phase 7: Match Scoring
-
-- Implement Match Analyzer Agent.
-- Compare the approved resume against every job posting.
-- Generate:
-  - match percentage
-  - matched skills
-  - missing skills
-  - missing keywords
-  - hard requirement gaps
-  - preferred qualification gaps
-  - short rationale
+- Calculate match percentages between the approved resume and each job posting.
+- Identify matched skills, missing skills, missing keywords, hard requirement gaps, and preferred qualification gaps.
 - Rank jobs from highest to lowest match percentage.
+- Split jobs into:
+  - jobs above the user-defined threshold
+  - jobs below the user-defined threshold
+- Prepare lower-match review prompts for missing skills.
+- Prepare email alerts for:
+  - new matching jobs
+  - jobs above threshold
+  - jobs needing user input
+  - application summary reports
 
-### Phase 8: Threshold-Based Auto-Apply
+Skills/tools used by this agent:
 
-- Ask whether the user wants automatic applications enabled.
-- Prompt for the user-defined minimum match percentage threshold.
-- Store the threshold in workflow state.
-- Show jobs that meet or exceed the threshold before applying.
-- Implement Application Agent for jobs above threshold.
-- Pause for unknown application questions.
-- Log applied, skipped, failed, unsupported, and needs-user-input jobs.
+- `validate_job_search_criteria`
+- `search_jobs_with_playwright`
+- `extract_job_posting_details`
+- `deduplicate_job_postings`
+- `score_resume_to_job_match`
+- `extract_missing_skills_and_keywords`
+- `rank_job_matches`
+- `build_lower_match_review`
+- `prepare_email_alert`
+- `send_email_with_smtplib`
 
-### Phase 9: Lower-Match Job Review
+### 4. Application Agent
 
-- List remaining jobs below the threshold.
-- Show current match percentage for each lower-match job.
-- Show missing skills and missing keywords for each lower-match job.
-- Show why each job did not meet the threshold.
-- Ask whether the user has experience with each missing skill.
-- Prompt the user to write experience notes for confirmed skills.
+Role: controlled browser automation for job applications.
 
-### Phase 10: Resume Update and Re-Match
+Responsibilities:
 
-- Update the resume only with user-confirmed missing-skill experience.
-- Recalculate match ratings for affected job postings.
-- If the revised match meets the original threshold, send the job to the Application Agent.
-- If the revised match remains below threshold, keep the job in the lower-match review list.
+- Apply only to jobs that meet or exceed the user-defined threshold.
+- Use the latest approved resume version.
+- Use Playwright to open application URLs and supported application flows.
+- Support common flows where technically feasible:
+  - LinkedIn Easy Apply
+  - Greenhouse
+  - Lever
+  - Workday
+- Upload the resume when required.
+- Pause for human input on unknown fields.
+- Respect semi-automated safety mode by pausing before final submission if enabled.
+- Log each application outcome:
+  - applied
+  - skipped
+  - failed
+  - unsupported
+  - needs user input
+- Send application results back to the Coordinator Agent and Job Intelligence Agent.
 
-## Frontend Flow
+Skills/tools used by this agent:
 
-The UI should guide the user through the workflow in order:
+- `open_application_with_playwright`
+- `detect_application_platform`
+- `fill_application_form`
+- `upload_resume_file`
+- `pause_for_user_input`
+- `submit_or_pause_before_submit`
+- `log_application_result`
+- `capture_application_screenshot`
+
+## Streamlit Frontend Flow
+
+Streamlit should expose a local step-by-step interface:
 
 1. **Resume Intake**
-   - resume upload
-   - LinkedIn profile link input
+   - upload resume
+   - enter LinkedIn profile link
 2. **ATS Score**
-   - baseline score
-   - score breakdown
+   - show baseline score
+   - show score breakdown
 3. **Resume Improvements**
-   - suggested changes
-   - approve or skip
-   - projected improved score
+   - show suggested changes
+   - approve or skip changes
+   - show projected improved score
 4. **Job Search Criteria**
-   - job type
-   - posting date
-   - location
+   - enter job type
+   - choose posting date filter
+   - enter location
 5. **Job Matches**
-   - ranked job cards
-   - match percentages
-   - missing skills and keywords
+   - show ranked job cards
+   - show match percentages
+   - show matched skills, missing skills, and missing keywords
 6. **Auto-Apply Settings**
-   - opt-in toggle
-   - user-defined threshold
-   - jobs above threshold
+   - opt into or out of automatic applications
+   - set minimum match threshold
+   - review jobs above threshold
 7. **Application Tracker**
-   - applied jobs
-   - failed jobs
-   - jobs needing user input
+   - show applied jobs
+   - show failed jobs
+   - show jobs needing user input
+   - show unsupported jobs
 8. **Lower-Match Review**
-   - lower-ranked jobs
-   - missing skill prompts
-   - user experience collection
-   - re-scored matches
+   - show jobs below threshold
+   - ask whether the user has experience with missing skills
+   - collect user-written experience notes
+   - re-score affected jobs
+9. **Email Alerts**
+   - configure SMTP host, port, sender, recipient, and credentials
+   - send job match alerts
+   - send application summary emails
+   - send user-action-needed emails
 
-## Constraints and Safety Rules
+## Workflow State
 
-- The agents must not fabricate skills, credentials, employment history, education, certifications, or project experience.
-- The agents must distinguish between confirmed user experience and suggested future learning.
-- Automated applications require explicit opt-in and a user-defined threshold.
+Persist these records for the MVP:
+
+- `candidate_profile`: parsed resume data and LinkedIn profile reference
+- `resume_versions`: original, suggested, approved, job-specific, and missing-skill-updated resumes
+- `ats_scores`: baseline score, projected score, and updated scores
+- `job_search_criteria`: role, posting date filter, and location
+- `job_postings`: discovered jobs and source metadata
+- `match_results`: match percentage, matched skills, missing skills, missing keywords, and rationale
+- `auto_apply_enabled`: explicit user opt-in for automatic applications
+- `application_threshold`: user-defined minimum match percentage for auto-apply
+- `application_log`: applied, skipped, failed, unsupported, and pending jobs
+- `missing_skill_responses`: user-confirmed experience notes for lower-match jobs
+- `email_alert_settings`: SMTP configuration and notification preferences
+- `audit_log`: confirmation points, resume changes, and application actions
+
+## Implementation Phases
+
+### Phase 1: Local ADK and Streamlit Foundation
+
+- **Status:** Complete for the local MVP foundation.
+- Define the ADK parent Coordinator Agent and three specialist subagents.
+- Define shared workflow state.
+- Set up Streamlit as the local frontend.
+- Add configuration for local state storage.
+- Add safe environment configuration for API keys, SMTP settings, and browser automation options.
+
+### Phase 2: Resume Builder and Optimizer
+
+- **Status:** P0 complete for the local MVP. Deterministic local Resume Agent tools are implemented for upload extraction, parsing, LinkedIn validation, ATS scoring, suggestions, projected scoring, and approved version tracking. Resume export remains a later P2 enhancement.
+- Build resume upload support for PDF, DOCX, and TXT.
+- Parse resume content into structured candidate data.
+- Add LinkedIn profile link validation.
+- Generate baseline ATS score.
+- Suggest resume improvements.
+- Generate projected ATS score.
+- Apply approved resume changes.
+- Track resume versions.
+
+### Phase 3: Job Search, Matching, and Email Alerts
+
+- **Status:** Complete for the local MVP. Criteria validation, Playwright-backed job search, pasted job normalization, deduplication, weighted match scoring, missing skill extraction, ranking, Streamlit job match display, SMTP settings, email payloads, and SMTP test sending are implemented. Match scoring considers skills/keywords, role alignment, experience signals, and education signals.
+- Build job search criteria inputs.
+- Use Playwright to search and extract job postings.
+- Normalize and deduplicate job results.
+- Score resume-to-job matches.
+- Extract missing skills and keywords.
+- Rank jobs.
+- Build email alert payloads.
+- Send notifications with `smtplib`.
+
+### Phase 4: Controlled Job Application Automation
+
+- **Status:** P0 complete for the local MVP. Auto-apply opt-in, threshold persistence, above/below-threshold review, platform detection, safe Playwright application opening, approved-resume upload handling, human-in-the-loop pausing, and application outcome logging are implemented. The visual tracker remains a P1 page enhancement.
+- Implement Playwright application automation.
+- Detect common application platforms.
+- Upload approved resume versions.
+- Pause for unknown application questions.
+- Respect threshold-based auto-apply settings.
+- Log application outcomes.
+
+### Phase 5: Lower-Match Review and Re-Match
+
+- **Status:** P0 complete for the local MVP. Lower-match review prompts, confirmed missing-skill experience capture, truthful resume update, affected-job re-scoring, and newly qualified handoff metadata are implemented.
+- List jobs below the user-defined threshold.
+- Ask whether the user has experience with missing skills.
+- Collect supporting experience notes.
+- Update the resume only with confirmed experience.
+- Re-score affected jobs.
+- Send newly qualified jobs to the Application Agent if they meet the original threshold.
+
+### Phase 6: MVP Verification
+
+- Test resume parsing for PDF, DOCX, and TXT.
+- Test LinkedIn link validation.
+- Test ATS scoring and resume improvement flow.
+- Test job search criteria handling.
+- Test Playwright job extraction and deduplication.
+- Test match scoring and missing skill extraction.
+- Test threshold filtering.
+- Test application logging.
+- Test email notification sending through SMTP.
+- Test lower-match review and re-match.
+
+## Safety Rules
+
+- Agents must not fabricate skills, credentials, employment history, education, certifications, or project experience.
+- Resume updates must be based on existing resume facts or user-confirmed experience.
+- Automated applications require explicit user opt-in and a user-defined threshold.
 - The system must keep an audit log of resume changes and application activity.
-- Job search results should include source URLs so the user can inspect postings manually.
-- Any browser automation must respect site terms, authentication requirements, rate limits, and user privacy.
+- Job search results must include source URLs whenever available.
+- Browser automation must respect site terms, authentication requirements, rate limits, and user privacy.
 - Jobs below the threshold must not be applied to unless re-scoring after user-confirmed resume updates meets the original threshold.
-- The ATS score and match percentage are decision-support signals, not guarantees.
+- ATS scores and match percentages are decision-support signals, not guarantees.
+- SMTP credentials must not be committed to the repo.
 
 ## Task Checklist
 
-### Workflow Foundation
+### Architecture and State
 
-- [ ] Define shared workflow state for resume, LinkedIn link, ATS scores, job criteria, matches, threshold, and applications.
-- [ ] Implement Coordinator Agent routing for the full ordered workflow.
-- [ ] Add guardrails that prevent off-topic requests and fabricated resume content.
-- [ ] Add resume version tracking for original, suggested, approved, and job-specific resumes.
-- [ ] Add application and resume-change audit logging.
+- [x] Define Coordinator Agent.
+- [x] Define Resume Agent.
+- [x] Define Job Intelligence Agent.
+- [x] Define Application Agent.
+- [x] Define shared workflow state.
+- [x] Add audit logging.
 
-### Resume and LinkedIn Intake
+### Streamlit Frontend
 
-- [ ] Build resume upload support for PDF, DOCX, and TXT.
-- [ ] Extract raw resume text from uploaded files.
-- [ ] Parse structured resume data: contact, skills, experience, education, projects, and certifications.
-- [ ] Add LinkedIn profile link input and validation.
-- [ ] Store LinkedIn as a profile reference unless the user provides accessible LinkedIn content or explicit authenticated access.
+- [x] Build Resume Intake page.
+- [x] Build ATS Score page.
+- [x] Build Resume Improvements page.
+- [x] Build Job Search Criteria page.
+- [x] Build Job Matches page.
+- [x] Build Auto-Apply Settings page.
+- [x] Build Application Tracker page.
+- [x] Build Lower-Match Review page.
+- [x] Build Email Alerts settings page.
 
-### Baseline ATS Scoring
+### Resume Agent Skills
 
-- [ ] Implement ATS Analyzer Agent scoring for the current resume.
-- [ ] Add ATS score categories for formatting, completeness, keyword coverage, measurable impact, and role clarity.
-- [ ] Display baseline ATS score from 0 to 100.
-- [ ] Display score rationale and top improvement areas.
+- [x] Implement resume parsing.
+- [x] Implement LinkedIn URL validation.
+- [x] Implement ATS scoring.
+- [x] Implement resume improvement suggestions.
+- [x] Implement projected ATS scoring.
+- [x] Implement approved resume updates.
+- [x] Implement missing-skill resume updates.
+- [ ] Implement resume export when needed.
 
-### Resume Improvement Loop
+### Job Intelligence Agent Skills
 
-- [ ] Implement Resume Improvement Agent suggestions.
-- [ ] Separate suggestions by formatting, wording, keywords, missing details, and optional role-specific improvements.
-- [ ] Show proposed changes before applying them.
-- [ ] Add user approval or skip controls.
-- [ ] Generate projected improved ATS score if the user chooses to implement changes.
-- [ ] Apply approved changes and create a new resume version.
+- [x] Implement job search criteria validation.
+- [x] Implement Playwright job search.
+- [x] Implement job detail extraction.
+- [x] Implement job deduplication.
+- [x] Implement match scoring.
+- [x] Implement missing skills and keywords extraction.
+- [x] Implement lower-match review payloads.
+- [x] Implement SMTP email alerts.
 
-### Job Search Criteria
+### Application Agent Skills
 
-- [ ] Prompt for target job type or role.
-- [ ] Prompt for when the job was posted.
-- [ ] Prompt for job location.
-- [ ] Validate search criteria before starting job search.
-
-### Internet Job Search
-
-- [ ] Implement Job Search Agent for internet job discovery.
-- [ ] Capture job title, company, location, posting date, source URL, application URL, and job description.
-- [ ] Deduplicate job postings.
-- [ ] Flag postings that require login, manual review, or unsupported application flows.
-
-### Match Scoring
-
-- [ ] Implement Match Analyzer Agent.
-- [ ] Generate match percentage for each job posting.
-- [ ] Display matched skills for each job.
-- [ ] Display missing skills for each job.
-- [ ] Display missing keywords for each job.
-- [ ] Separate hard requirement gaps from preferred qualification gaps when possible.
-- [ ] Rank jobs from highest to lowest match percentage.
-
-### Threshold-Based Auto-Apply
-
-- [ ] Ask whether the user wants automatic applications enabled.
-- [ ] Prompt for the user-defined minimum match percentage threshold.
-- [ ] Show jobs that meet or exceed the threshold.
-- [ ] Implement Application Agent for jobs above threshold.
-- [ ] Pause for unknown application questions.
-- [ ] Log applied, skipped, failed, unsupported, and needs-user-input jobs.
-
-### Lower-Match Job Review
-
-- [ ] List remaining jobs below the threshold.
-- [ ] Show current match percentage for each lower-match job.
-- [ ] Show missing skills and missing keywords for each lower-match job.
-- [ ] Ask whether the user has experience with each missing skill.
-- [ ] Prompt the user to write experience notes for confirmed skills.
-
-### Resume Update and Re-Match
-
-- [ ] Update the resume only with user-confirmed missing-skill experience.
-- [ ] Recalculate match ratings for affected job postings.
-- [ ] If the revised match meets the original threshold, send the job to the Application Agent.
-- [ ] If the revised match remains below threshold, keep the job in the lower-match review list.
-
-### Frontend Pages and Panels
-
-- [ ] Build Resume Intake page with upload and LinkedIn link input.
-- [ ] Build ATS Score page with baseline score and breakdown.
-- [ ] Build Resume Improvements page with approve or skip controls.
-- [ ] Build Job Search Criteria page.
-- [ ] Build Job Matches page with ranked cards.
-- [ ] Build Auto-Apply Settings page with threshold controls.
-- [ ] Build Application Tracker page.
-- [ ] Build Lower-Match Review page.
+- [x] Implement auto-apply threshold controls.
+- [x] Implement Playwright application opening.
+- [x] Implement application platform detection.
+- [ ] Implement form filling.
+- [x] Implement resume upload.
+- [x] Implement unknown-question pause.
+- [x] Implement submit or pause-before-submit behavior.
+- [x] Implement application result logging.
 
 ## Verification Plan
 
-### Automated Tests
+### Code Correctness Tests
 
-- Resume parsing for PDF, DOCX, and TXT.
-- LinkedIn profile link validation.
-- ATS score response shape and category coverage.
-- Resume suggestion generation without fabrication.
-- Projected ATS scoring after selected changes.
-- Job search criteria validation.
-- Job result normalization and deduplication.
-- Match percentage calculation.
-- Missing skill and keyword extraction.
-- Threshold filtering.
-- Application logging.
-- Lower-match skill confirmation flow.
-- Re-match after resume updates.
+- Resume file parsing returns expected data structures.
+- LinkedIn URL validation accepts and rejects expected inputs.
+- Job posting deduplication is deterministic.
+- Match scoring returns structured output.
+- Application logging records every supported status.
+- SMTP email payload generation does not expose secrets.
 
-### Manual Verification
+### Agent Behavior Evaluations
+
+- The Coordinator routes each workflow step to the correct specialist agent.
+- Resume Agent does not fabricate experience.
+- Job Intelligence Agent separates matched and missing skills.
+- Application Agent does not apply below the threshold.
+- Application Agent pauses for unknown questions.
+- The system updates resumes only from user-confirmed missing-skill experience.
+
+### Manual MVP Verification
 
 - Upload a resume and enter a LinkedIn profile link.
-- Confirm the app displays a baseline ATS score.
-- Review suggested resume changes and projected improved score.
-- Approve changes and verify a new resume version is created.
-- Enter job type, posting date, and location.
-- Verify job postings are found and ranked.
-- Confirm each job shows match percentage, missing skills, and missing keywords.
-- Set a threshold and verify only jobs above the threshold are sent to the Application Agent.
-- Confirm lower-match jobs remain visible for review.
-- Add real experience for missing skills and verify the resume is updated and re-scored.
-- Confirm jobs that newly meet the threshold are queued for application.
+- Confirm baseline ATS scoring works.
+- Approve resume changes and verify projected scoring.
+- Search for jobs by role, posting date, and location.
+- Confirm ranked job matches show missing skills and keywords.
+- Configure email alerts and send a test email.
+- Set an auto-apply threshold.
+- Confirm only qualifying jobs are sent to the Application Agent.
+- Confirm lower-match jobs can be reviewed and re-scored.
