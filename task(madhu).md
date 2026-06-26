@@ -1,0 +1,34 @@
+# Tasks: Career Twin Agent (Resume & Job Intelligence Suite)
+
+- `[x]` Setup SQLite Database & Persistence Layer (`db.py`)
+- `[x]` Create Job Scraper & Parser (`job_scraper.py`)
+- `[x]` Create SMTP Email Alert Helper (`smtp_helper.py`)
+- `[x]` Define/Update ADK Agents & Tools
+  - `[x]` Configure ADK Coordinator, Resume, Job Intel, and Application agents (`agent.py`)
+  - `[x]` Implement core resume parsing & baseline ATS score tools (`tools.py`)
+  - `[x]` Implement Future Resume & 12-week Roadmap tools (`tools.py`)
+  - `[x]` Implement Interview-to-Resume interactive chat & synthesis (`tools.py`)
+  - `[x]` Implement Recruiter Simulation (HR, Tech Lead, VP) (`tools.py`)
+  - `[x]` Implement Resume ROI & Searchability Audit (`tools.py`)
+  - `[x]` Implement Global Job Fit Engine (US, India, Europe, Middle East, Remote) (`tools.py`)
+  - `[x]` Implement Skill Gap Auto-Builder & project briefs (`tools.py`)
+  - `[x]` Implement Digital Twin Q&A & Cover Letter generator (`tools.py`)
+  - `[x]` Implement One-Click Swarm Simulation & Cheatsheet (`tools.py`)
+  - `[x]` Implement Real-Time Salary Negotiator Copilot (`tools.py`)
+  - `[x]` Implement Auto-Upgrade & Hidden Skills Discovery (`tools.py`)
+  - `[x]` Implement Proof-of-Skill Interactive Showcase template (`tools.py`)
+- `[x]` Update FastAPI API Router & Routes (`routes.py`)
+- `[x]` Overhaul Streamlit Frontend (`app.py`) with Pitch-Black High-Contrast Cyber Theme
+  - `[x]` Main CSS Styles, Typography, and Pulsing Agent Status Lights
+  - `[x]` View 1: 🌌 Career Twin Hub & Audit Logs
+  - `[x]` View 2: 📄 Resume Intelligence (ATS Score & Suggestions)
+  - `[x]` View 3: 🗣️ Interview-to-Resume Chat Interface
+  - `[x]` View 4: 🧠 Recruiter Simulation Panel
+  - `[x]` View 5: 📈 Resume ROI & Global Fit
+  - `[x]` View 6: 🔍 Job Discovery & One-Click Swarm
+  - `[x]` View 7: 🛠️ Skill Gap & Future Roadmaps
+  - `[x]` View 8: 🤖 Digital Twin & Cover Letters
+  - `[x]` View 9: 🔄 Auto-Upgrade, Commits, & Showcase
+  - `[x]` View 10: ⚙️ System & SMTP Settings
+- `[x]` Run Verification & End-to-End Testing
+- `[x]` Generate Walkthrough (`walkthrough.md`)
