@@ -8,6 +8,9 @@
             .header h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
             .header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
             .content { padding: 35px 25px; }
+            .greeting { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; }
+            .settings-summary { background-color: #f8f9fa; border-left: 4px solid #0077b5; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
+            .settings-title { font-weight: 600; margin-bottom: 8px; color: #0077b5; }
             .job-card { background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px; padding: 20px; margin-bottom: 20px; }
             .job-title { font-size: 18px; font-weight: 600; color: #0077b5; margin: 0 0 8px 0; text-decoration: none; display: inline-block; }
             .job-title:hover { text-decoration: underline; }
@@ -18,6 +21,8 @@
             .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #e1e4e8; }
             .apply-button { display: inline-block; background-color: #0077b5; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 600; }
             .apply-button:hover { background-color: #005a87; }
+            .unsubscribe-link { color: #0077b5; text-decoration: none; margin-top: 10px; display: inline-block; }
+            .unsubscribe-link:hover { text-decoration: underline; }
         </style>
     </head>
     <body>
@@ -27,45 +32,44 @@
                 <p>Automating your job hunt with daily updates</p>
             </div>
             <div class="content">
+                <div class="greeting">Hello Sathwik,</div>
+                <p>Here are the job listings matching your requested settings:</p>
+                <div class="settings-summary">
+                    <div class="settings-title">🔍 Search Preferences:</div>
+                    <strong>Keywords/Role:</strong> Data Scientist<br/>
+                    <strong>Location:</strong> Hyderabad, India<br/>
+                    <strong>Experience:</strong> 3-5 years<br/>
+                    <strong>Alert Frequency:</strong> Weekly
+                </div>
     
                 <div class="job-card">
-                    <a href="https://in.linkedin.com/jobs/view/data-scientist-digital-products-at-us-pharmacopeia-4413455175" target="_blank" class="job-title">Data Scientist, Digital Products</a>
-                    <div class="job-meta">
-                        <span>🏢 <strong>US Pharmacopeia</strong></span>
-                        <span>📍 Hyderabad, Telangana, India</span>
-                    </div>
-                    <p class="job-desc">Job listing for Data Scientist, Digital Products at US Pharmacopeia in Hyderabad, Telangana, India.</p>
-                    <a href="https://in.linkedin.com/jobs/view/data-scientist-digital-products-at-us-pharmacopeia-4413455175" target="_blank" class="apply-button">View on LinkedIn</a>
-                </div>
-            
-                <div class="job-card">
-                    <a href="https://in.linkedin.com/jobs/view/data-scientist-at-invoicecloud-inc-4419691849" target="_blank" class="job-title">Data Scientist</a>
-                    <div class="job-meta">
-                        <span>🏢 <strong>InvoiceCloud, Inc.</strong></span>
-                        <span>📍 Hyderabad, Telangana, India</span>
-                    </div>
-                    <p class="job-desc">Job listing for Data Scientist at InvoiceCloud, Inc. in Hyderabad, Telangana, India.</p>
-                    <a href="https://in.linkedin.com/jobs/view/data-scientist-at-invoicecloud-inc-4419691849" target="_blank" class="apply-button">View on LinkedIn</a>
-                </div>
-            
-                <div class="job-card">
-                    <a href="https://in.linkedin.com/jobs/view/gen-ai-tester-at-xenon-seven-4432545863" target="_blank" class="job-title">Gen AI Tester</a>
-                    <div class="job-meta">
-                        <span>🏢 <strong>Xenon Seven</strong></span>
-                        <span>📍 Hyderabad, Telangana, India</span>
-                    </div>
-                    <p class="job-desc">Job listing for Gen AI Tester at Xenon Seven in Hyderabad, Telangana, India.</p>
-                    <a href="https://in.linkedin.com/jobs/view/gen-ai-tester-at-xenon-seven-4432545863" target="_blank" class="apply-button">View on LinkedIn</a>
-                </div>
-            
-                <div class="job-card">
-                    <a href="https://in.linkedin.com/jobs/view/lead-data-scientist-at-quantium-4422693439" target="_blank" class="job-title">Lead Data Scientist</a>
+                    <a href="https://in.linkedin.com/jobs/view/data-scientist-senior-at-quantium-4413289406" target="_blank" class="job-title">Data Scientist (Senior)</a>
                     <div class="job-meta">
                         <span>🏢 <strong>Quantium</strong></span>
                         <span>📍 Hyderabad, Telangana, India</span>
                     </div>
-                    <p class="job-desc">Job listing for Lead Data Scientist at Quantium in Hyderabad, Telangana, India.</p>
-                    <a href="https://in.linkedin.com/jobs/view/lead-data-scientist-at-quantium-4422693439" target="_blank" class="apply-button">View on LinkedIn</a>
+                    <p class="job-desc">Job listing for Data Scientist (Senior) at Quantium in Hyderabad, Telangana, India.</p>
+                    <a href="https://in.linkedin.com/jobs/view/data-scientist-senior-at-quantium-4413289406" target="_blank" class="apply-button">View on LinkedIn</a>
+                </div>
+            
+                <div class="job-card">
+                    <a href="https://in.linkedin.com/jobs/view/ai-and-a-machine-learning-engineer-vg-w4-cdao0230-at-ey-4432604756" target="_blank" class="job-title">AI And A - Machine Learning Engineer - VG - W4 - CDAO0230</a>
+                    <div class="job-meta">
+                        <span>🏢 <strong>EY</strong></span>
+                        <span>📍 Hyderabad, Telangana, India</span>
+                    </div>
+                    <p class="job-desc">Job listing for AI And A - Machine Learning Engineer - VG - W4 - CDAO0230 at EY in Hyderabad, Telangana, India.</p>
+                    <a href="https://in.linkedin.com/jobs/view/ai-and-a-machine-learning-engineer-vg-w4-cdao0230-at-ey-4432604756" target="_blank" class="apply-button">View on LinkedIn</a>
+                </div>
+            
+                <div class="job-card">
+                    <a href="https://in.linkedin.com/jobs/view/staff-data-scientist-fraud-risk-at-tide-4430894820" target="_blank" class="job-title">Staff Data Scientist (Fraud & Risk)</a>
+                    <div class="job-meta">
+                        <span>🏢 <strong>Tide</strong></span>
+                        <span>📍 Hyderabad, Telangana, India</span>
+                    </div>
+                    <p class="job-desc">Job listing for Staff Data Scientist (Fraud & Risk) at Tide in Hyderabad, Telangana, India.</p>
+                    <a href="https://in.linkedin.com/jobs/view/staff-data-scientist-fraud-risk-at-tide-4430894820" target="_blank" class="apply-button">View on LinkedIn</a>
                 </div>
             
                 <div class="job-card">
@@ -78,9 +82,21 @@
                     <a href="https://in.linkedin.com/jobs/view/remote-data-scientist-at-turing-4432809522" target="_blank" class="apply-button">View on LinkedIn</a>
                 </div>
             
+                <div class="job-card">
+                    <a href="https://in.linkedin.com/jobs/view/remote-data-scientist-at-turing-4432812378" target="_blank" class="job-title">Remote Data Scientist</a>
+                    <div class="job-meta">
+                        <span>🏢 <strong>Turing</strong></span>
+                        <span>📍 Hyderabad, Telangana, India</span>
+                    </div>
+                    <p class="job-desc">Job listing for Remote Data Scientist at Turing in Hyderabad, Telangana, India.</p>
+                    <a href="https://in.linkedin.com/jobs/view/remote-data-scientist-at-turing-4432812378" target="_blank" class="apply-button">View on LinkedIn</a>
+                </div>
+            
             </div>
             <div class="footer">
                 <p>This is an automated job alert sent by your Job Alert Agent.</p>
+                <p>You received this email because you requested job updates for these settings.</p>
+                <p><a href="https://example.com/unsubscribe" class="unsubscribe-link">Unsubscribe from these alerts</a></p>
             </div>
         </div>
     </body>

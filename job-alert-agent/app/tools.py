@@ -20,12 +20,14 @@ from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
-async def scrape_linkedin_jobs(keywords: str, location: str, limit: int = 5) -> list[dict]:
-    """Scrapes LinkedIn for job listings matching keywords and location, posted in the last 24 hours.
+async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: str = None, frequency: str = "Daily", limit: int = 5) -> list[dict]:
+    """Scrapes LinkedIn for job listings matching keywords, location, experience range, and frequency (posted time range).
 
     Args:
         keywords: Job titles or keywords to search for (e.g. "Python Developer").
         location: Target location for the job search (e.g. "Seattle").
+        experience_years: Experience years range filter (e.g., '0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years', or 'Any Experience').
+        frequency: Alert frequency / search time-frame window. Valid values are 'Hourly', 'Daily', 'Weekly', 'Monthly'.
         limit: Max number of jobs to return.
 
     Returns:
@@ -33,9 +35,42 @@ async def scrape_linkedin_jobs(keywords: str, location: str, limit: int = 5) -> 
     """
     encoded_keywords = urllib.parse.quote(keywords)
     encoded_location = urllib.parse.quote(location)
-    # f_TPR=r86400 restricts to past 24 hours
-    url = f"https://www.linkedin.com/jobs/search?keywords={encoded_keywords}&location={encoded_location}&f_TPR=r86400"
     
+    # Map frequency to f_TPR time parameter (in seconds)
+    frequency_mapping = {
+        "Hourly": "r3600",
+        "Daily": "r86400",
+        "Weekly": "r604800",
+        "Monthly": "r2592000"
+    }
+    freq_val = "r86400"
+    if frequency:
+        for k, v in frequency_mapping.items():
+            if k.lower() == frequency.lower():
+                freq_val = v
+                break
+                
+    url = f"https://www.linkedin.com/jobs/search?keywords={encoded_keywords}&location={encoded_location}&f_TPR={freq_val}"
+    
+    if experience_years and experience_years != "Any Experience":
+        experience_mapping = {
+            "0-1 years": "1,2",
+            "1-3 years": "2,3",
+            "3-5 years": "3,4",
+            "5-10 years": "4,5",
+            "10+ years": "5,6"
+        }
+        # Match case-insensitively
+        key_matched = None
+        for key in experience_mapping:
+            if key.lower() == experience_years.lower():
+                key_matched = key
+                break
+        if key_matched:
+            val = experience_mapping[key_matched]
+            encoded_val = urllib.parse.quote(val)
+            url += f"&f_E={encoded_val}"
+            
     jobs = []
     
     print(f"Launching Playwright to scrape: {url}")
@@ -123,39 +158,72 @@ async def scrape_linkedin_jobs(keywords: str, location: str, limit: int = 5) -> 
     # Fallback to Mock Results if LinkedIn blocks us or has no matching jobs
     if not jobs:
         print("Using realistic fallback job listings (LinkedIn rate limited or returned empty).")
+        # Format prefixes based on experience years
+        title_prefix = ""
+        if experience_years and experience_years != "Any Experience":
+            exp_lower = experience_years.lower()
+            if "0-1" in exp_lower or "1-3" in exp_lower:
+                title_prefix = "Junior "
+            elif "3-5" in exp_lower:
+                title_prefix = "Associate "
+            elif "5-10" in exp_lower:
+                title_prefix = "Senior "
+            elif "10+" in exp_lower:
+                title_prefix = "Lead/Principal "
+
+        def format_title(base_title):
+            if not title_prefix:
+                return base_title
+            if title_prefix.endswith("of "):
+                return f"{title_prefix}{base_title}"
+            return f"{title_prefix}{base_title}"
+
+        exp_desc = f"{experience_years} experience " if (experience_years and experience_years != "Any Experience") else ""
+        freq_desc = f"posted in the last {frequency.lower() if frequency else 'day'}"
         jobs = [
             {
-                "title": f"Staff Software Engineer ({keywords})",
+                "title": format_title(f"Software Engineer ({keywords})"),
                 "company": "InnoTech Solutions",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/101010101",
-                "description": f"Lead development of Python/Go microservices on GCP. Experience with Kubernetes is preferred."
+                "description": f"Lead development of Python/Go microservices on GCP. Perfect fit for a {exp_desc}Software Engineer. Experience with Kubernetes is preferred. Job {freq_desc}."
             },
             {
-                "title": f"Senior Backend Developer ({keywords})",
+                "title": format_title(f"Backend Developer ({keywords})"),
                 "company": "CloudScale Inc.",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/202020202",
-                "description": f"Build high-throughput APIs using FastAPI, PostgreSQL, and Google Cloud Platform. Remote friendly."
+                "description": f"Build high-throughput APIs using FastAPI, PostgreSQL, and Google Cloud Platform. Role matches {exp_desc}Backend Developer requirements. Job {freq_desc}."
             },
             {
-                "title": f"Data Engineer ({keywords})",
+                "title": format_title(f"Data Engineer ({keywords})"),
                 "company": "DataVibe Analytics",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/303030303",
-                "description": f"Design and optimize ETL pipelines. Experience with BigQuery, Spark, and python scripting is required."
+                "description": f"Design and optimize ETL pipelines. Experience with BigQuery, Spark, and python scripting is required for this {exp_desc}Data Engineer role. Job {freq_desc}."
             }
         ][:limit]
         
     return jobs
 
 
-def send_job_alert_email(recipient_email: str, job_listings_json: list[dict]) -> str:
+def send_job_alert_email(
+    recipient_email: str,
+    job_listings_json: list[dict],
+    keywords: str = None,
+    location: str = None,
+    experience_years: str = None,
+    frequency: str = None
+) -> str:
     """Compiles job listings into a styled HTML email and sends it via SMTP.
 
     Args:
         recipient_email: The email address to send the job alerts to.
         job_listings_json: A list of dictionaries representing job listings.
+        keywords: Optional keywords used in the job search.
+        location: Optional location used in the job search.
+        experience_years: Optional experience range used in the job search.
+        frequency: Optional alert frequency used in the job search.
 
     Returns:
         A status message indicating success or failure.
@@ -170,27 +238,41 @@ def send_job_alert_email(recipient_email: str, job_listings_json: list[dict]) ->
     except ValueError:
         smtp_port = 587
 
+    # Parse recipient's name from email address
+    name = "Candidate"
+    if recipient_email:
+        name_part = recipient_email.split("@")[0]
+        if "." in name_part:
+            name = name_part.split(".")[0].title()
+        else:
+            name = name_part.title()
+
     # Construct stylized HTML email
-    html_content = """
+    html_content = f"""
     <html>
     <head>
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
-            .container { max-width: 600px; background-color: #ffffff; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e1e4e8; }
-            .header { background: linear-gradient(135deg, #0077b5, #00a0dc); color: #ffffff; padding: 25px 20px; text-align: center; }
-            .header h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
-            .header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
-            .content { padding: 35px 25px; }
-            .job-card { background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px; padding: 20px; margin-bottom: 20px; }
-            .job-title { font-size: 18px; font-weight: 600; color: #0077b5; margin: 0 0 8px 0; text-decoration: none; display: inline-block; }
-            .job-title:hover { text-decoration: underline; }
-            .job-meta { font-size: 13px; color: #666; margin-bottom: 12px; }
-            .job-meta span { margin-right: 15px; display: inline-block; }
-            .job-meta strong { color: #333; }
-            .job-desc { font-size: 14px; color: #555; line-height: 1.5; margin: 0 0 15px 0; }
-            .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #e1e4e8; }
-            .apply-button { display: inline-block; background-color: #0077b5; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 600; }
-            .apply-button:hover { background-color: #005a87; }
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }}
+            .container {{ max-width: 600px; background-color: #ffffff; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e1e4e8; }}
+            .header {{ background: linear-gradient(135deg, #0077b5, #00a0dc); color: #ffffff; padding: 25px 20px; text-align: center; }}
+            .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }}
+            .header p {{ margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }}
+            .content {{ padding: 35px 25px; }}
+            .greeting {{ font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; }}
+            .settings-summary {{ background-color: #f8f9fa; border-left: 4px solid #0077b5; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }}
+            .settings-title {{ font-weight: 600; margin-bottom: 8px; color: #0077b5; }}
+            .job-card {{ background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px; padding: 20px; margin-bottom: 20px; }}
+            .job-title {{ font-size: 18px; font-weight: 600; color: #0077b5; margin: 0 0 8px 0; text-decoration: none; display: inline-block; }}
+            .job-title:hover {{ text-decoration: underline; }}
+            .job-meta {{ font-size: 13px; color: #666; margin-bottom: 12px; }}
+            .job-meta span {{ margin-right: 15px; display: inline-block; }}
+            .job-meta strong {{ color: #333; }}
+            .job-desc {{ font-size: 14px; color: #555; line-height: 1.5; margin: 0 0 15px 0; }}
+            .footer {{ background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #e1e4e8; }}
+            .apply-button {{ display: inline-block; background-color: #0077b5; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 600; }}
+            .apply-button:hover {{ background-color: #005a87; }}
+            .unsubscribe-link {{ color: #0077b5; text-decoration: none; margin-top: 10px; display: inline-block; }}
+            .unsubscribe-link:hover {{ text-decoration: underline; }}
         </style>
     </head>
     <body>
@@ -200,6 +282,15 @@ def send_job_alert_email(recipient_email: str, job_listings_json: list[dict]) ->
                 <p>Automating your job hunt with daily updates</p>
             </div>
             <div class="content">
+                <div class="greeting">Hello {name},</div>
+                <p>Here are the job listings matching your requested settings:</p>
+                <div class="settings-summary">
+                    <div class="settings-title">🔍 Search Preferences:</div>
+                    <strong>Keywords/Role:</strong> {keywords or "Any"}<br/>
+                    <strong>Location:</strong> {location or "Any"}<br/>
+                    <strong>Experience:</strong> {experience_years or "Any"}<br/>
+                    <strong>Alert Frequency:</strong> {frequency or "Daily"}
+                </div>
     """
     
     if not job_listings_json:
@@ -228,26 +319,28 @@ def send_job_alert_email(recipient_email: str, job_listings_json: list[dict]) ->
             </div>
             <div class="footer">
                 <p>This is an automated job alert sent by your Job Alert Agent.</p>
+                <p>You received this email because you requested job updates for these settings.</p>
+                <p><a href="https://example.com/unsubscribe" class="unsubscribe-link">Unsubscribe from these alerts</a></p>
             </div>
         </div>
     </body>
     </html>
     """
 
-    # Local fallback path
+    # Local preview path (always write HTML locally for UI preview)
     fallback_path = os.path.abspath("job_alert_output.html")
+    try:
+        with open(fallback_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+    except Exception as file_err:
+        print(f"Warning: Failed to write local preview HTML file: {file_err}")
 
-    # If SMTP credentials are not configured, fallback to saving HTML locally
+    # If SMTP credentials are not configured, return fallback status
     if not smtp_user or not smtp_password:
-        try:
-            with open(fallback_path, "w", encoding="utf-8") as f:
-                f.write(html_content)
-            return (
-                f"SMTP_USER or SMTP_PASSWORD environment variables not set. "
-                f"Wrote job alert email locally to: {fallback_path}"
-            )
-        except Exception as file_err:
-            return f"SMTP credentials unconfigured and failed to write local file: {file_err}"
+        return (
+            f"SMTP_USER or SMTP_PASSWORD environment variables not set. "
+            f"Wrote job alert email locally to: {fallback_path}"
+        )
 
     # Build MIME message
     msg = MIMEMultipart("alternative")

@@ -37,17 +37,23 @@ async def main():
     keywords = os.environ.get("JOB_KEYWORDS", "Python Developer")
     location = os.environ.get("JOB_LOCATION", "Seattle")
     recipient = os.environ.get("RECIPIENT_EMAIL", "candidate@example.com")
+    experience = os.environ.get("JOB_EXPERIENCE", "Any Experience")
+    frequency = os.environ.get("ALERT_FREQUENCY", "Daily")
     
     print("\n==============================================")
     print("      DAILY JOB HUNT UPDATE TRIGGER           ")
     print("==============================================")
-    print(f"Keywords:  {keywords}")
-    print(f"Location:  {location}")
-    print(f"Recipient: {recipient}")
+    print(f"Keywords:   {keywords}")
+    print(f"Location:   {location}")
+    print(f"Experience: {experience}")
+    print(f"Frequency:  {frequency}")
+    print(f"Recipient:  {recipient}")
     print("==============================================\n")
 
     # Construct instructions for the Job Alert Agent
-    prompt = f"Find jobs matching keywords '{keywords}' in location '{location}' and email them to {recipient}."
+    experience_phrase = f"with experience years range '{experience}'" if experience != "Any Experience" else "at any experience level"
+    frequency_phrase = f"posted in the last '{frequency.lower()}' frequency window"
+    prompt = f"Find jobs matching keywords '{keywords}' in location '{location}' {experience_phrase} {frequency_phrase} and email them to {recipient}."
     
     print("Invoking Job Alert Agent directly...\n")
     

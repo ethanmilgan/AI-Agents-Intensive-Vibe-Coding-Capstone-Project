@@ -154,13 +154,36 @@ async def run_agent_in_streamlit(prompt, log_container, recipient_email):
 # TAB 1: Control & Settings Panel
 with tab_panel:
     st.subheader("🎯 Configure Job Alert Parameters")
+    
+    # Load defaults from environment
+    default_keywords = os.environ.get("JOB_KEYWORDS", "")
+    default_location = os.environ.get("JOB_LOCATION", "")
+    default_recipient = os.environ.get("RECIPIENT_EMAIL", "")
+    default_experience = os.environ.get("JOB_EXPERIENCE", "Any Experience")
+    default_frequency = os.environ.get("ALERT_FREQUENCY", "Daily")
+    
     col1, col2 = st.columns(2)
     with col1:
-        keywords = st.text_input("Job Role Keywords", value="", placeholder="e.g. Python Developer")
-        location = st.text_input("Location", value="", placeholder="e.g. Seattle")
+        keywords = st.text_input("Job Role Keywords", value=default_keywords, placeholder="e.g. Python Developer")
+        location = st.text_input("Location", value=default_location, placeholder="e.g. Seattle")
+        
+        experience_options = ["Any Experience", "0-1 years", "1-3 years", "3-5 years", "5-10 years", "10+ years"]
+        try:
+            default_exp_idx = experience_options.index(default_experience)
+        except ValueError:
+            default_exp_idx = 0
+        experience = st.selectbox("Experience Level", options=experience_options, index=default_exp_idx)
+        
     with col2:
-        recipient = st.text_input("Recipient Email", value="", placeholder="Email or phone")
+        recipient = st.text_input("Recipient Email", value=default_recipient, placeholder="Email or phone")
         max_listings = st.slider("Maximum Listings", min_value=1, max_value=20, value=5)
+        
+        frequency_options = ["Hourly", "Daily", "Weekly", "Monthly"]
+        try:
+            default_freq_idx = frequency_options.index(default_frequency)
+        except ValueError:
+            default_freq_idx = 1
+        frequency = st.selectbox("Alert Frequency", options=frequency_options, index=default_freq_idx)
         
     if st.button("Save Job Search Settings"):
         if not keywords.strip() or not location.strip() or not recipient.strip():
@@ -171,7 +194,10 @@ with tab_panel:
             save_env_var("JOB_KEYWORDS", keywords)
             save_env_var("JOB_LOCATION", location)
             save_env_var("RECIPIENT_EMAIL", recipient)
+            save_env_var("JOB_EXPERIENCE", experience)
+            save_env_var("ALERT_FREQUENCY", frequency)
             st.success("Search configurations saved to .env!")
+            st.rerun()
 
     st.divider()
     st.subheader("🚀 Trigger Job Alert Agent")
@@ -189,7 +215,9 @@ with tab_panel:
             st.session_state.validation_error = None
             with st.spinner("Agent starting... Scraping LinkedIn & generating job report..."):
                 # Run the agent trigger
-                prompt = f"Find jobs matching keywords '{keywords}' in location '{location}' and email them to {recipient}."
+                experience_phrase = f"with experience years range '{experience}'" if experience != "Any Experience" else "at any experience level"
+                frequency_phrase = f"posted in the last '{frequency.lower()}' frequency window"
+                prompt = f"Find jobs matching keywords '{keywords}' in location '{location}' {experience_phrase} {frequency_phrase} and email them to {recipient}."
                 log_box = st.empty()
                 response, logs = asyncio.run(run_agent_in_streamlit(prompt, log_box, recipient))
                 
