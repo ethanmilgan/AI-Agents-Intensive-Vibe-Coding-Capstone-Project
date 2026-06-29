@@ -19,13 +19,12 @@ import google.auth
 from dotenv import load_dotenv
 
 from google.adk.agents import Agent
-from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
 
 # Load environment configuration from absolute path relative to this file
 script_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(script_dir, "..", ".env")
+env_path = os.path.join(script_dir, "..", "..", ".env")
 load_dotenv(env_path, override=True)
 
 try:
@@ -41,33 +40,29 @@ except Exception:
     else:
         os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
 
-from app.job_intelligence_agent.agent import job_intelligence_agent
-from app.application_agent.agent import application_agent
+from .tools import scrape_linkedin_jobs, send_job_alert_email
 
 async def init_agent_state(callback_context) -> None:
     """Initialize agent session state with default recipient email if not provided."""
     if "recipient_email" not in callback_context.state:
         callback_context.state["recipient_email"] = os.environ.get("RECIPIENT_EMAIL", "candidate@example.com")
 
-root_agent = Agent(
-    name="root_agent",
+job_intelligence_agent = Agent(
+    name="job_intelligence_agent",
     model=Gemini(
         model="gemini-3.1-flash-lite",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=(
-        "You are the Coordinator Agent. Your role is orchestrating the job hunt and career tasks.\n"
-        "1. For any request involving finding jobs, scraping job listings, or sending job alert email notifications, "
-        "you must transfer control/delegate to the job_intelligence_agent subagent. Do not try to perform the scraping or email notifications yourself.\n"
-        "2. For any request involving applying to a job, submitting a job application, or browser automation of form submissions (e.g. LinkedIn Easy Apply), "
-        "you must transfer control/delegate to the application_agent subagent. Do not try to perform the application automation yourself."
+        "You are a Job Intelligence Agent whose role is automating the job search and sending daily alerts.\n"
+        "The recipient email address for job alerts is: {recipient_email}\n"
+        "When asked to find and notify about jobs, you must:\n"
+        "1. Scrape/find job listings matching the user's criteria (keywords/role, location, experience range, and frequency) "
+        "using the `scrape_linkedin_jobs` tool.\n"
+        "2. Send the found job listings to the recipient at {recipient_email} using the `send_job_alert_email` tool. "
+        "Make sure to pass all the search parameters used (keywords, location, experience_years, and frequency) as metadata fields to the `send_job_alert_email` tool so they are included in the email.\n"
+        "Provide a summary of the actions taken once the email has been sent successfully."
     ),
-    sub_agents=[job_intelligence_agent, application_agent],
+    tools=[scrape_linkedin_jobs, send_job_alert_email],
     before_agent_callback=init_agent_state,
 )
-
-app = App(
-    root_agent=root_agent,
-    name="app",
-)
-

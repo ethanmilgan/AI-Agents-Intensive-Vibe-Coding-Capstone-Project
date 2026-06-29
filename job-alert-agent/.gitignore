@@ -202,3 +202,11 @@ my_env.tfvars
 
 # A2A Inspector
 tools/a2a-inspector/
+
+# Candidate's private resume, profile data, and databases
+resume.pdf
+candidate_profile.json
+*.db
+*.db-journal
+*.sqlite3
+*.sqlite3-journal

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock LinkedIn Job Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f3f2f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .apply-btn {
+            background-color: #0a66c2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 24px;
+            cursor: pointer;
+        }
+        .apply-btn:hover {
+            background-color: #004182;
+        }
+        /* Modal styling */
+        #easy-apply-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            width: 50%;
+            border-radius: 8px;
+            position: relative;
+        }
+        .step-page {
+            display: none;
+        }
+        .step-page.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="tel"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn-group {
+            margin-top: 30px;
+            text-align: right;
+        }
+        .btn-group button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            margin-left: 10px;
+        }
+        .btn-next, .btn-submit {
+            background-color: #0a66c2;
+            color: white;
+        }
+        .btn-back {
+            background-color: #e0e0e0;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Staff Data Scientist</h1>
+    <h3>PepsiCo • Hyderabad, India (Hybrid)</h3>
+    <p>We are seeking a Staff Data Scientist to join our team and build amazing data models.</p>
+    <button class="apply-btn jobs-apply-button" onclick="openModal()">Easy Apply</button>
+</div>
+
+<!-- Easy Apply Modal -->
+<div id="easy-apply-modal" class="jobs-easy-apply-modal" role="dialog">
+    <div class="modal-content">
+        <h2 style="margin-top:0;">Apply to PepsiCo</h2>
+        <hr>
+        
+        <!-- Page 1: Standard Fields -->
+        <div id="page1" class="step-page active">
+            <h3>Contact Info</h3>
+            <div class="form-group">
+                <label for="first-name-input">First Name</label>
+                <input type="text" id="first-name-input" name="first_name">
+            </div>
+            <div class="form-group">
+                <label for="last-name-input">Last Name</label>
+                <input type="text" id="last-name-input" name="last_name">
+            </div>
+            <div class="form-group">
+                <label for="email-input">Email Address</label>
+                <input type="email" id="email-input" name="email">
+            </div>
+            <div class="form-group">
+                <label for="phone-input">Phone Number</label>
+                <input type="tel" id="phone-input" name="phone">
+            </div>
+            <div class="form-group">
+                <label for="location-input">Location</label>
+                <input type="text" id="location-input" name="location">
+            </div>
+            <div class="btn-group">
+                <button class="btn-next" onclick="nextPage(2)">Next</button>
+            </div>
+        </div>
+
+        <!-- Page 2: Custom Questions (Heuristics & LLM tests) -->
+        <div id="page2" class="step-page">
+            <h3>Additional Questions</h3>
+            <!-- 1. Text question (Python experience) -->
+            <div class="form-group">
+                <label for="python-exp">How many years of experience do you have with Python?</label>
+                <input type="text" id="python-exp" name="python_exp">
+            </div>
+            
+            <!-- 2. Select question (Sponsorship) -->
+            <div class="form-group">
+                <label for="sponsorship">Will you now or in the future require sponsorship for employment visa status?</label>
+                <select id="sponsorship" name="sponsorship">
+                    <option value="">Select an option</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+            </div>
+            
+            <!-- 3. Radio buttons question (Legally authorized) -->
+            <div class="form-group">
+                <fieldset style="border:none; padding:0; margin:0;">
+                    <legend style="font-weight:bold; margin-bottom:8px;">Are you legally authorized to work in India?</legend>
+                    <label style="display:inline-block; font-weight:normal; margin-right:15px;">
+                        <input type="radio" id="auth-yes" name="authorized" value="Yes"> Yes
+                    </label>
+                    <label style="display:inline-block; font-weight:normal;">
+                        <input type="radio" id="auth-no" name="authorized" value="No"> No
+                    </label>
+                </fieldset>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-back" onclick="nextPage(1)">Back</button>
+                <button class="btn-next" onclick="nextPage(3)">Next</button>
+            </div>
+        </div>
+
+        <!-- Page 3: Resume Upload -->
+        <div id="page3" class="step-page">
+            <h3>Upload Resume</h3>
+            <div class="form-group">
+                <label for="resume-file">Upload your CV/Resume</label>
+                <input type="file" id="resume-file" name="resume">
+            </div>
+            <div class="btn-group">
+                <button class="btn-back" onclick="nextPage(2)">Back</button>
+                <button class="btn-next" onclick="nextPage(4)">Review</button>
+            </div>
+        </div>
+
+        <!-- Page 4: Review / Submit -->
+        <div id="page4" class="step-page">
+            <h3>Review Application</h3>
+            <p>Please review your details and confirm submission.</p>
+            <div class="btn-group">
+                <button class="btn-back" onclick="nextPage(3)">Back</button>
+                <button class="btn-submit" onclick="submitApp()">Submit application</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById('easy-apply-modal').style.display = 'block';
+    }
+    function nextPage(pageNum) {
+        // Hide all pages
+        const pages = document.querySelectorAll('.step-page');
+        pages.forEach(p => p.classList.remove('active'));
+        
+        // Show selected page
+        document.getElementById('page' + pageNum).classList.add('active');
+    }
+    function submitApp() {
+        alert('Application Submitted Successfully!');
+        document.getElementById('easy-apply-modal').style.display = 'none';
+        
+        // Dynamically add a success message to the body for verification
+        const successDiv = document.createElement('div');
+        successDiv.id = "success-message";
+        successDiv.style.color = "green";
+        successDiv.style.fontWeight = "bold";
+        successDiv.style.marginTop = "20px";
+        successDiv.innerText = "Application Success: Thank you!";
+        document.body.appendChild(successDiv);
+    }
+</script>
+
+</body>
+</html>

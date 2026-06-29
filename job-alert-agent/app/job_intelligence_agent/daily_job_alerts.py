@@ -17,15 +17,20 @@ import os
 import sys
 import asyncio
 from dotenv import load_dotenv
+
+# Add project root to python path to resolve absolute imports correctly
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from app.agent import root_agent
 
 async def main():
-    # Determine the directory of the script and load .env
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(script_dir, ".env")
+    env_path = os.path.join(project_root, ".env")
     
     if os.path.exists(env_path):
         load_dotenv(env_path, override=True)

@@ -20,11 +20,22 @@ from google.cloud import logging as google_cloud_logging
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+import logging
 
 setup_telemetry()
-_, project_id = google.auth.default()
-logging_client = google_cloud_logging.Client()
-logger = logging_client.logger(__name__)
+
+# Safely initialize logging client with a fallback for local offline environment
+try:
+    _, project_id = google.auth.default()
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+    logging_client = google_cloud_logging.Client()
+    logger = logging_client.logger(__name__)
+    cloud_logging_enabled = True
+except Exception:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    cloud_logging_enabled = False
+
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )
@@ -44,7 +55,7 @@ app: FastAPI = get_fast_api_app(
     artifact_service_uri=artifact_service_uri,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
-    otel_to_cloud=True,
+    otel_to_cloud=cloud_logging_enabled,
 )
 app.title = "job-alert-agent"
 app.description = "API for interacting with the Agent job-alert-agent"
@@ -60,8 +71,12 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     Returns:
         Success message
     """
-    logger.log_struct(feedback.model_dump(), severity="INFO")
+    if cloud_logging_enabled:
+        logger.log_struct(feedback.model_dump(), severity="INFO")
+    else:
+        logger.info(f"Feedback received: {feedback.model_dump()}")
     return {"status": "success"}
+
 
 
 # Main execution
