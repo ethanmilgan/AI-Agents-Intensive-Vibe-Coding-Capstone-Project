@@ -27,7 +27,7 @@ from app.database import (
     get_pending_hitl_prompt,
     get_hitl_prompt
 )
-from app.application_agent.login_worker import check_linkedin_session_sync, login_to_linkedin_sync, get_session_path
+from app.easy_agent.login_worker import check_linkedin_session_sync, login_to_linkedin_sync, get_session_path
 from app.application_agent.form_filler_agent import form_filler_agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
