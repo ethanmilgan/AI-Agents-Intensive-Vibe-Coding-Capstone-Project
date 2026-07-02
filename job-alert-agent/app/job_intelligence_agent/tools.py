@@ -20,7 +20,7 @@ from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
-async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: str = None, frequency: str = "Daily", limit: int = 5) -> list[dict]:
+async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: str = None, frequency: str = "Daily", limit: int = None) -> list[dict]:
     """Scrapes LinkedIn for job listings matching keywords, location, experience range, and frequency (posted time range).
 
     Args:
@@ -31,8 +31,18 @@ async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: s
         limit: Max number of jobs to return.
 
     Returns:
-        A list of dictionaries containing job details: 'title', 'company', 'location', 'link', and 'description'.
+        A list of dictionaries containing job details: 'title', 'company', 'location', 'link', 'description', and 'is_easy_apply'.
     """
+    if not keywords or not location or keywords.strip() == "" or location.strip() == "":
+        print("Keywords or location is empty. Skipping scraping.")
+        return []
+
+    if limit is None or limit <= 0:
+        try:
+            limit = int(os.environ.get("EMAIL_JOB_LIMIT", "5"))
+        except ValueError:
+            limit = 5
+
     encoded_keywords = urllib.parse.quote(keywords)
     encoded_location = urllib.parse.quote(location)
     
@@ -141,12 +151,27 @@ async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: s
                 if "?" in link:
                     link = link.split("?")[0]
                 
+                # Check if Easy Apply
+                easy_apply_elem = (
+                    card.select_one(".job-search-card__easy-apply-label") or
+                    card.select_one(".base-search-card__easy-apply-label") or
+                    card.select_one("[data-is-easy-apply]")
+                )
+                is_easy = False
+                if easy_apply_elem:
+                    is_easy = True
+                else:
+                    card_text = card.get_text()
+                    if "Easy Apply" in card_text:
+                        is_easy = True
+                        
                 jobs.append({
                     "title": title,
                     "company": company,
                     "location": loc,
                     "link": link,
-                    "description": f"Job listing for {title} at {company} in {loc}."
+                    "description": f"Job listing for {title} at {company} in {loc}.",
+                    "is_easy_apply": is_easy
                 })
                 
         except Exception as e:
@@ -183,21 +208,24 @@ async def scrape_linkedin_jobs(keywords: str, location: str, experience_years: s
                 "company": "InnoTech Solutions",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/101010101",
-                "description": f"Lead development of Python/Go microservices on GCP. Perfect fit for a {exp_desc}Software Engineer. Experience with Kubernetes is preferred. Job {freq_desc}."
+                "description": f"Lead development of Python/Go microservices on GCP. Perfect fit for a {exp_desc}Software Engineer. Experience with Kubernetes is preferred. Job {freq_desc}.",
+                "is_easy_apply": True
             },
             {
                 "title": format_title(f"Backend Developer ({keywords})"),
                 "company": "CloudScale Inc.",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/202020202",
-                "description": f"Build high-throughput APIs using FastAPI, PostgreSQL, and Google Cloud Platform. Role matches {exp_desc}Backend Developer requirements. Job {freq_desc}."
+                "description": f"Build high-throughput APIs using FastAPI, PostgreSQL, and Google Cloud Platform. Role matches {exp_desc}Backend Developer requirements. Job {freq_desc}.",
+                "is_easy_apply": False
             },
             {
                 "title": format_title(f"Data Engineer ({keywords})"),
                 "company": "DataVibe Analytics",
                 "location": location,
                 "link": "https://www.linkedin.com/jobs/view/303030303",
-                "description": f"Design and optimize ETL pipelines. Experience with BigQuery, Spark, and python scripting is required for this {exp_desc}Data Engineer role. Job {freq_desc}."
+                "description": f"Design and optimize ETL pipelines. Experience with BigQuery, Spark, and python scripting is required for this {exp_desc}Data Engineer role. Job {freq_desc}.",
+                "is_easy_apply": True
             }
         ][:limit]
         
@@ -225,10 +253,18 @@ def send_job_alert_email(
     Returns:
         A status message indicating success or failure.
     """
+    if not recipient_email or recipient_email.strip() == "" or recipient_email == "candidate@example.com":
+        print("Recipient email is empty or default. Skipping alert email sending.")
+        return "Email alert skipped: Recipient email is empty or default."
+
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
     smtp_port_str = os.environ.get("SMTP_PORT", "587")
     smtp_user = os.environ.get("SMTP_USER", "")
     smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    
+    if not smtp_user or not smtp_password or not smtp_server or smtp_user.strip() == "" or smtp_password.strip() == "":
+        print("SMTP details are not fully configured. Skipping alert email sending.")
+        return "Email alert skipped: SMTP credentials or server not configured."
     
     try:
         smtp_port = int(smtp_port_str)
@@ -297,10 +333,23 @@ def send_job_alert_email(
             location = job.get("location", "N/A")
             link = job.get("link", "#")
             description = job.get("description", "No description provided.")
+            is_easy = job.get("is_easy_apply", False)
+            
+            easy_apply_badge = ""
+            if is_easy:
+                easy_apply_badge = """
+                <span style="display: inline-flex; align-items: center; background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; margin-left: 8px; vertical-align: middle; font-family: sans-serif;">
+                    <svg style="width: 10px; height: 10px; fill: #2e7d32; margin-right: 4px; vertical-align: middle;" viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>
+                    Easy Apply
+                </span>
+                """
             
             html_content += f"""
                 <div class="job-card">
-                    <a href="{link}" target="_blank" class="job-title">{title}</a>
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                        <a href="{link}" target="_blank" class="job-title" style="margin: 0;">{title}</a>
+                        {easy_apply_badge}
+                    </div>
                     <div class="job-meta">
                         <span>🏢 <strong>{company}</strong></span>
                         <span>📍 {location}</span>

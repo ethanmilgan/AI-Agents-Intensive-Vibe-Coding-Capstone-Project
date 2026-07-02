@@ -44,6 +44,7 @@ except Exception:
 from app.job_intelligence_agent.agent import job_intelligence_agent
 from app.application_agent.agent import application_agent
 from app.easy_agent.agent import easy_agent
+from app.security_agent.agent import security_agent
 
 async def init_agent_state(callback_context) -> None:
     """Initialize agent session state with default recipient email if not provided."""
@@ -58,13 +59,15 @@ root_agent = Agent(
     ),
     instruction=(
         "You are the Coordinator Agent. Your role is orchestrating the job hunt and career tasks.\n"
-        "1. For any request involving finding jobs, scraping job listings, or sending job alert email notifications, "
+        "1. For any user request or action, you must first consult/delegate to the security_agent to validate "
+        "the inputs, domain, and actions against the security guardrails. If validation fails, reject the request.\n"
+        "2. For any request involving finding jobs, scraping job listings, or sending job alert email notifications, "
         "you must transfer control/delegate to the job_intelligence_agent subagent. Do not try to perform the scraping or email notifications yourself.\n"
-        "2. For any request involving applying to a job, submitting a job application, or browser automation of form submissions (e.g. LinkedIn Easy Apply), "
+        "3. For any request involving applying to a job, submitting a job application, or browser automation of form submissions (e.g. LinkedIn Easy Apply), "
         "you must transfer control/delegate to the application_agent subagent. Do not try to perform the application automation yourself.\n"
-        "3. For any request involving easy apply automation, delegate control to the easy_agent subagent."
+        "4. For any request involving easy apply automation, delegate control to the easy_agent subagent."
     ),
-    sub_agents=[job_intelligence_agent, application_agent, easy_agent],
+    sub_agents=[job_intelligence_agent, application_agent, easy_agent, security_agent],
     before_agent_callback=init_agent_state,
 )
 
