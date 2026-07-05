@@ -14,6 +14,7 @@ Security is enforced by a dedicated Security Agent that acts as the final valida
 
 ### 3. Agent Skills
 System capabilities are split into specialized sub-agents with dedicated skills:
+* **Resume Agent**: Handles parsing PDF resumes to extract structured experience, skills, and education, evaluates baseline ATS readiness, and suggests tailorable text improvements.
 * **Job Intelligence Agent**: Handles target keyword job board scraping, scoring matches, and SMTP email alerts.
 * **LinkedIn Form Filler Agent**: Focuses on browser automation inside LinkedIn, using intelligent heuristics to identify input fields, select dropdowns, handle radio options, and pre-fill multi-step Easy Apply forms.
 * **Portal Application Agent**: Automates external company portal application forms (e.g. Greenhouse, Lever).
@@ -134,6 +135,7 @@ graph TD
 ### Agent Roles:
 * **Coordinator Agent**: Receives instructions and delegates to sub-agents.
 * **Security Agent**: Validates target domains and sanitizes form inputs against safety guidelines.
+* **Resume Agent**: Ingests resume files (PDF), parses structured candidate profiles, and generates ATS match scores.
 * **Job Intelligence Agent**: Handles searching, job scraping, matching, and email alerting.
 * **Application Agent**: Orchestrates background Playwright applications on portal forms (Greenhouse/Lever).
 * **LinkedIn Form Filler Agent (Easy Apply Agent)**: Focuses on browser automation inside LinkedIn, using intelligent heuristics to fill text fields, select options, and navigate multi-step Easy Apply sequences with pre-populated candidate data.

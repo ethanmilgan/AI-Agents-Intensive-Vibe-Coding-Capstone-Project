@@ -1,129 +1,113 @@
-# Streamlit Frontend Specification: Resume to Job Application Agent
+# React Frontend Specification: NextRole.Ai
 
-This document outlines the layout, inputs, outputs, and interactive features of the Streamlit application interface. The application is structured as a multi-tab dashboard.
-
----
-
-## 🗂️ Tab 1: Resume Workspace (Resume Ingestion & Creation)
-Provides options to build a new resume, optimize an existing one, or import profile data.
-
-### 📥 Inputs
-*   **Resume Ingestion Mode Selector** (Radio/Toggle):
-    *   *Manual Entry*
-    *   *Upload Old Resume*
-    *   *Upload Visual Style Template*
-    *   *Paste LinkedIn Profile*
-*   **Manual Entry Form Fields** (Visible only in *Manual Entry* mode):
-    *   **Contact Info**: Name, Email, Phone, LinkedIn URL, Portfolio/Website.
-    *   **Professional Summary**: Text area for objective or summary.
-    *   **Work Experience Section**: Dynamically expandable fields for Company Name, Role, Start/End Dates, Location, and bullet points.
-    *   **Education Section**: Dynamically expandable fields for Institution, Degree, Major, Graduation Date, and GPA.
-    *   **Skills Section**: Text input for comma-separated technical and soft skills.
-*   **File Uploader Widgets**:
-    *   *Old Resume Uploader* (Accepts `.pdf`, `.docx` - visible in *Upload Old Resume* mode).
-    *   *Style Example Uploader* (Accepts `.pdf`, `.docx`, `.html` - visible in *Upload Visual Style Template* mode).
-    *   *LinkedIn Profile PDF Uploader* (Accepts `.pdf` - visible in *Paste LinkedIn Profile* mode).
-*   **LinkedIn Text Area** (Visible in *Paste LinkedIn Profile* mode):
-    *   Text box to paste copied text from a LinkedIn profile.
-
-### 📤 Outputs
-*   **Status Indicators**: Toast messages or alerts confirming parsing success (e.g., `"Resume successfully parsed!"` or `"Style template loaded."`).
-*   **Structured Resume Preview**: A formatted preview (rendered Markdown) showing the parsed or input details.
-
-### ⚡ Interactive Features
-*   **"Save Resume" Button**: Saves the structured resume JSON data to the local workspace folder.
-*   **Inline Resume Editor**: Lets the user manually edit any of the parsed details directly on screen before saving.
+This document outlines the layout, user controls, outputs, and interactive features of the **NextRole.Ai** React-based Single Page Application (SPA) dashboard. 
 
 ---
 
-## 📊 Tab 2: Tailoring & ATS Score (Job Matching & Optimization)
-Evaluates resume fit against target jobs and generates tailored application files.
+## 🧭 Global Layout & Navigation
 
-### 📥 Inputs
-*   **Target Job URL**: URL text input to scrape job description from direct ATS portals or LinkedIn.
-*   **Target Job Description**: Text area for pasting description text (auto-filled if URL scrape succeeds).
-*   **Resume Template Theme Selector**: Dropdown selector (*Modern*, *Minimalist*, *Creative*) to style the output PDF.
+The interface features a responsive left sidebar navigation menu with the following tabs:
+1.  **Dashboard** (Analytics and quick status)
+2.  **Configuration** (Resume intake, search settings, and LinkedIn credentials)
+3.  **Job Discovery** (Scouted jobs table, match scores, and details slides)
+4.  **Agent Console** (Playwright worker monitor and HITL 2FA input console)
+5.  **ATS Optimizer** (Cover letters, outreach notes, and bullet points generator)
 
-### 📤 Outputs
-*   **ATS Scorecard**: A circular gauge chart or progress bar showing the match score (`0-100`).
-*   **Gap Analysis Checklist**: Highlighting missing keywords, skills, and experience gaps.
-*   **Tailored Document Tabs**:
-    1.  *Tailored Resume Preview*: Displaying the modified bullet points side-by-side with original bullet points.
-    2.  *Custom Cover Letter*: Fully drafted cover letter tailored to the job description.
-    3.  *Recruiter Outreach Message*: Drafted LinkedIn connection request note or follow-up email.
-    4.  *Screening Question Answers*: Dynamic drafts answering custom application questions.
-
-### ⚡ Interactive Features
-*   **"Analyze & Tailor" Button**: Triggers the ATS Analyzer and Resume Builder agents.
-*   **"Download PDF" Button**: Generates and downloads the styled PDF resume via Playwright.
-*   **"Download Docx" Button**: Generates and downloads the standard Microsoft Word resume via `python-docx`.
-*   **"Copy to Clipboard" Buttons**: Individual copy buttons next to the Cover Letter, Outreach note, and answers.
+> [!IMPORTANT]
+> **Secure Navigation Gate**: The Job Discovery, Agent Console, and ATS Optimizer tabs remain **locked and disabled** (displaying a lock icon) until the candidate completes the Configuration workspace by uploading a resume, setting preferences, and successfully authenticating with LinkedIn.
 
 ---
 
-## 🤖 Tab 3: Auto-Apply Tracker (Playwright Form Filling)
-Controls and monitors the browser automation for job submissions.
+## 📊 Tab 1: Dashboard (Overview & Analytics)
+Provides a high-level summary of your job search progress, key metrics, and action items.
 
 ### 📥 Inputs
-*   **Target Application URL**: Input text field for the direct job apply form.
-*   **Persistent Cookies Toggle**: Checkbox to enable or disable loading session state cookies from `playwright_session/`.
+*   *None* (Purely informational/routing view).
 
 ### 📤 Outputs
-*   **Application Progress Bar**: Step indicators showing current automation phase.
-*   **Real-time Process Logs**: Visual console logging current browser actions (e.g., `"[1/4] Greenhouse portal detected"`, `"[2/4] Uploading resume file..."`).
-*   **Browser Status Badge**: Displays current state: *Idle*, *Running*, *Paused for HITL Review*, or *Submission Ready*.
-
-### ⚡ Interactive Features
-*   **"Start Auto-Apply" Button**: Spawns the headful Playwright browser to navigate, fill out the form, and upload the resume.
+*   **Key Metrics Row (Cards)**:
+    *   **Total Jobs Discovered**: Number of listings scraped.
+    *   **Applications Sent**: Count of automated submissions.
+    *   **Average ATS Match**: The mean match score across target roles.
+    *   **Verification Alerts**: Displays count of active Human-in-the-Loop prompts (e.g., *"1 Action Required"*).
+*   **Recent Activity Feed**: List of recent background worker steps and logged application updates.
 
 ---
 
-## 💬 Tab 4: Human-in-the-Loop Interaction (HITL Question Resolver)
-Acts as the bridge when the automated browser encounters questions it cannot answer.
+## ⚙️ Tab 2: Configuration (Ingestion & Connection Gate)
+The setup hub where the candidate profile, credentials, and constraints are established.
 
 ### 📥 Inputs
-*   **Quick Answer Input**: Simple text field for the user to type a quick response or guidance (e.g., typing *"Yes, 3 years"*).
+*   **Resume PDF Uploader**: Drag-and-drop file uploader (accepts `.pdf` files).
+*   **Job Preferences Fields**:
+    *   *Search Keywords*: Comma-separated list or tags (e.g., `"Python Developer, Data Engineer"`).
+    *   *Target Location*: Preferred search locations (e.g., `"San Francisco, CA"`).
+*   **LinkedIn Login Form**:
+    *   *Username*: Field pre-filled from local `.env` or manual entry.
+    *   *Password*: Field pre-filled from local `.env` or manual entry.
 
 ### 📤 Outputs
-*   **HITL Active Alert**: A high-visibility banner (orange/red) that displays only when the browser is paused waiting for user input.
-*   **Scraped Question Box**: Shows the exact question text identified on the application page.
-*   **Polished Answer Preview**: Displays the final professional answer written by the Paraphrasing Agent before it is filled into the browser form.
+*   **Profile Parsing Preview**: Renders structured candidate text (Experience, Skills, Education) upon PDF parsing.
+*   **LinkedIn Connection Status Card**: Displays connection status (*Disconnected*, *Connecting...*, *Connected*).
 
 ### ⚡ Interactive Features
-*   **"Submit Answer" Button**: Sends the polished answer to the Form Filler Agent, updates the shared JSON state file, and resumes Playwright.
+*   **"Save Configuration" Button**: Saves settings and parses the candidate profile.
+*   **"Connect LinkedIn" Button**: Triggers the background FastAPI worker to initialize chromium and log in.
 
 ---
 
-## 📬 Tab 5: Job Alerts & SMTP Settings (Email Alerts)
-Manages the configuration and execution of the 24-hour scraper and email alert delivery.
+## 🔍 Tab 3: Job Discovery (Match Evaluation & Search)
+Displays compatible jobs found by the scraper, matched directly against the parsed resume profile.
 
 ### 📥 Inputs
-*   **Recipient Email Address**: The email where you want to receive the alerts.
-*   **Search Job Titles**: Comma-separated list of target role names (e.g., "Python Developer, Data Engineer").
-*   **Search Location**: Target city or country.
-*   **Advanced Settings (Collapsible Accordion)**: Optional fields for custom SMTP Server, Port, Sender Email, and App Password (pre-configured/mocked with a dummy account for showcase).
+*   **Job Selection Checkboxes**: Allows selecting individual rows to target for bulk applications.
+*   **Search Bar / Filters**: Input fields to filter results by title or keyword.
 
 ### 📤 Outputs
-*   **Alert Status**: Success/Error message when notifications are sent.
-*   **Scraped Jobs List**: A table showing jobs found in the last 24 hours matching the criteria, complete with role title, company, links, and ATS fit scores.
+*   **Scouted Jobs Grid**:
+    *   Displays Company, Role Title, Location, and Post Date.
+    *   **Match Fit Badge**: Color-coded percentage index showing compatibility (e.g., `92% Fit` [Green], `55% Fit` [Red]).
+*   **Details Sidepanel (Slideout)**:
+    *   Displays full scraped job description.
+    *   Lists **Matched Keywords** vs. **Missing Keywords** (Keyword Gap Analysis).
+    *   Highlights mismatched requirements (years of experience, qualifications).
 
 ### ⚡ Interactive Features
-*   **"Trigger Daily Scrape & Alert" Button**: Runs Playwright to search LinkedIn and emails the results to your recipient email.
-*   **"Save SMTP Settings" Button** (Inside Advanced Settings): Saves custom SMTP credentials if you choose to override the default/dummy sender.
-*   **"Send Test Email" Button** (Inside Advanced Settings): Sends a quick test email to verify custom settings.
+*   **"Run Search" Button**: Dispatches the Job Intelligence Agent scraper.
+*   **"View Details" Link/Button**: Slides open the details sidepanel.
+*   **"Bulk Apply" Button**: Enqueues selected jobs for automated browser submissions.
 
 ---
 
-## 🕒 Tab 6: History Dashboard (Application Log)
-Tracks past applications and logs.
+## 🤖 Tab 4: Agent Console (Playwright Worker & 2FA Resolver)
+Provides real-time visibility into browser automation runs and handles security prompts.
 
 ### 📥 Inputs
-*   **Status Update Selector**: Dropdown selector in each row of the table to manually adjust the job status (e.g., *Submitted*, *Interviewing*, *Offer Received*, *Rejected*).
+*   **HITL Verification Input**: OTP/2FA code entry box (visible only when worker status is *Paused for Verification*).
 
 ### 📤 Outputs
-*   **Key Metrics Summary Cards**: Cards displaying *Total Applied*, *Average ATS Score*, and *Active Interviews*.
-*   **Logged Applications Table**: Read-only log showing: Date, Company, Role, Job URL, ATS Score, and Application Status (sourced from `applications_log.json`).
+*   **Worker State Badge**: Displays *Idle*, *Running*, *Paused for Verification*, or *Completed*.
+*   **Real-time Process Logs Console**: Monospaced terminal container streaming Playwright subprocess events (e.g., `"[INFO] Entering credential fields..."`, `"[WARNING] 2FA required by target platform"`).
+*   **Screenshot Preview**: Embedded window showing a captured image of the current browser state.
 
 ### ⚡ Interactive Features
-*   **"Refresh Log" Button**: Reloads the local log file.
-*   **"Export Log to CSV" Button**: Exports the history table as a CSV sheet.
+*   **"Submit 2FA Code" Button**: Writes the user's OTP response to the SQLite database and resumes the browser worker.
+*   **"Terminate Task" Button**: Halts current background processes.
+
+---
+
+## ✨ Tab 5: ATS Optimizer (Asset Tailoring Suite)
+AI assistant that builds tailored application artifacts dynamically.
+
+### 📥 Inputs
+*   **Job Profile Selector**: Dropdown to select a specific scraped job from the SQLite database history.
+
+### 📤 Outputs
+*   **Tailored Document Workspaces**:
+    *   **Cover Letter Tab**: Drafts an introductory letter matching resume qualifications to the job details.
+    *   **Recruiter Outreach Tab**: Drafts a 300-character LinkedIn request or follow-up note.
+    *   **Resume Bullet Optimizer Tab**: Displays your bullet points with recommended improvements (e.g., adding metrics, aligning action verbs).
+
+### ⚡ Interactive Features
+*   **"Generate tailored assets" Button**: Prompts the Gemini model to write custom documents.
+*   **"Copy to Clipboard" Buttons**: Instantly copies cover letters or outreach drafts.
