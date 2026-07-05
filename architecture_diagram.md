@@ -8,7 +8,7 @@ This guide explains how **NextRole.Ai** works under the hood, translating the co
 
 This diagram shows how the frontend user interface, backend server, database, and background browser automation interact:
 
-![System Architecture Flowchart](file:///c:/Users/sathw/Downloads/googlexkaggle_course/AI-Agents-Intensive-Vibe-Coding-Capstone-Project/architecture_diagram.png)
+![System Architecture Flowchart](file:///c:/Users/sathw/Downloads/googlexkaggle_course/AI-Agents-Intensive-Vibe-Coding-Capstone-Project/assets/architecture_diagram.png)
 
 ```mermaid
 graph TB

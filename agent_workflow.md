@@ -8,7 +8,7 @@ This document visualizes how the hierarchical AI agents in **NextRole.Ai** coope
 
 The following diagram tracks the flow of a user command through the security gates and sub-agent handoffs:
 
-![Multi-Agent Workflow Flowchart](file:///c:/Users/sathw/Downloads/googlexkaggle_course/AI-Agents-Intensive-Vibe-Coding-Capstone-Project/agent_workflow.png)
+![Multi-Agent Workflow Flowchart](file:///c:/Users/sathw/Downloads/googlexkaggle_course/AI-Agents-Intensive-Vibe-Coding-Capstone-Project/assets/agent_workflow.png)
 
 ```mermaid
 graph TD
