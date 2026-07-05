@@ -7,7 +7,8 @@ import {
   Settings as SettingsIcon, 
   Briefcase, 
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import JobSearch from './components/JobSearch';
@@ -22,6 +23,10 @@ export default function App() {
   const [activeHITL, setActiveHITL] = useState(null);
   const [consoleSelectedAppId, setConsoleSelectedAppId] = useState(null);
   const [consoleStatusFilter, setConsoleStatusFilter] = useState('All');
+  
+  // Track profile and settings to determine if configuration is complete
+  const [profile, setProfile] = useState(null);
+  const [settings, setSettings] = useState(null);
 
   // Poll for LinkedIn Login status
   const checkLinkedinStatus = async () => {
@@ -55,21 +60,69 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
+  // Fetch profile and settings to verify configuration completion
+  const fetchConfigData = async () => {
+    try {
+      const pRes = await fetch('/api/profile');
+      const pData = await pRes.json();
+      if (pData) {
+        setProfile(pData);
+      }
+      
+      const sRes = await fetch('/api/settings');
+      const sData = await sRes.json();
+      if (sData) {
+        setSettings(sData);
+      }
+    } catch (e) {
+      console.error("Failed to fetch profile/settings config:", e);
+    }
+  };
+
+  const refreshConfig = () => {
     checkLinkedinStatus();
     checkPendingHITLs();
+    fetchConfigData();
+  };
+
+  useEffect(() => {
+    refreshConfig();
 
     // Set up polling intervals
     const statusInterval = setInterval(checkLinkedinStatus, 15000);
     const hitlInterval = setInterval(checkPendingHITLs, 3000);
+    const configInterval = setInterval(fetchConfigData, 10000);
 
     return () => {
       clearInterval(statusInterval);
       clearInterval(hitlInterval);
+      clearInterval(configInterval);
     };
   }, []);
 
+  // Configuration is complete if profile has a name, search settings have keyword/location, and LinkedIn is connected
+  const isConfigComplete = 
+    profile && 
+    profile.personal_info && 
+    profile.personal_info.full_name && 
+    profile.personal_info.full_name.trim() !== '' &&
+    settings &&
+    settings.JOB_KEYWORDS && 
+    settings.JOB_KEYWORDS.trim() !== '' &&
+    settings.JOB_LOCATION && 
+    settings.JOB_LOCATION.trim() !== '' &&
+    linkedinStatus === 'online';
+
+  const handleTabClick = (tabName) => {
+    if (['search', 'console', 'optimizer'].includes(tabName) && !isConfigComplete) {
+      alert("Please complete the Configuration first (upload your resume/profile, save preferences, and authenticate LinkedIn).");
+      return;
+    }
+    setActiveTab(tabName);
+  };
+
   const handleHITLBannerClick = () => {
+    if (!isConfigComplete) return;
     if (pendingHITLs.length > 0) {
       setConsoleSelectedAppId(pendingHITLs[0].application_id);
     } else if (activeHITL) {
@@ -82,9 +135,9 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard setActiveTab={setActiveTab} />;
+        return <Dashboard setActiveTab={handleTabClick} />;
       case 'search':
-        return <JobSearch setActiveTab={setActiveTab} />;
+        return <JobSearch setActiveTab={handleTabClick} />;
       case 'optimizer':
         return <Optimizer />;
       case 'console':
@@ -99,9 +152,9 @@ export default function App() {
           />
         );
       case 'settings':
-        return <Settings onProfileUpdated={checkLinkedinStatus} />;
+        return <Settings onProfileUpdated={refreshConfig} />;
       default:
-        return <Dashboard setActiveTab={setActiveTab} />;
+        return <Dashboard setActiveTab={handleTabClick} />;
     }
   };
 
@@ -113,41 +166,46 @@ export default function App() {
           <div className="logo-icon">
             <Briefcase size={20} color="#ffffff" />
           </div>
-          <span className="logo-text">AIGravity</span>
+          <span className="logo-text">NextRole.Ai</span>
         </div>
 
         <nav className="nav-links">
+          {/* 1. Dashboard */}
           <button 
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabClick('dashboard')}
           >
             <LayoutDashboard size={18} />
             <span>Dashboard</span>
           </button>
           
+          {/* 2. Configuration */}
           <button 
-            className={`nav-item ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveTab('search')}
+            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => handleTabClick('settings')}
+          >
+            <SettingsIcon size={18} />
+            <span>Configuration</span>
+          </button>
+          
+          {/* 3. Job Discovery */}
+          <button 
+            className={`nav-item ${activeTab === 'search' ? 'active' : ''} ${!isConfigComplete ? 'locked-tab' : ''}`}
+            onClick={() => handleTabClick('search')}
           >
             <Search size={18} />
             <span>Job Discovery</span>
+            {!isConfigComplete && <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
           </button>
           
+          {/* 4. Agent Console */}
           <button 
-            className={`nav-item ${activeTab === 'optimizer' ? 'active' : ''}`}
-            onClick={() => setActiveTab('optimizer')}
-          >
-            <Sparkles size={18} />
-            <span>ATS Optimizer</span>
-          </button>
-          
-          <button 
-            className={`nav-item ${activeTab === 'console' ? 'active' : ''}`}
-            onClick={() => setActiveTab('console')}
+            className={`nav-item ${activeTab === 'console' ? 'active' : ''} ${!isConfigComplete ? 'locked-tab' : ''}`}
+            onClick={() => handleTabClick('console')}
           >
             <Terminal size={18} />
             <span>Agent Console</span>
-            {pendingHITLs.length > 0 && (
+            {pendingHITLs.length > 0 && isConfigComplete && (
               <span style={{
                 marginLeft: 'auto',
                 backgroundColor: 'var(--color-warning)',
@@ -164,14 +222,17 @@ export default function App() {
                 {pendingHITLs.length}
               </span>
             )}
+            {!isConfigComplete && <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
           </button>
-          
+
+          {/* 5. ATS Optimizer */}
           <button 
-            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
+            className={`nav-item ${activeTab === 'optimizer' ? 'active' : ''} ${!isConfigComplete ? 'locked-tab' : ''}`}
+            onClick={() => handleTabClick('optimizer')}
           >
-            <SettingsIcon size={18} />
-            <span>Configuration</span>
+            <Sparkles size={18} />
+            <span>ATS Optimizer</span>
+            {!isConfigComplete && <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
           </button>
         </nav>
 
@@ -190,7 +251,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {/* Global HITL Active Alert Banner */}
-        {activeHITL && (
+        {activeHITL && isConfigComplete && (
           <div className="hitl-alert-banner">
             <div className="hitl-alert-content">
               <AlertTriangle size={20} color="var(--color-warning)" />

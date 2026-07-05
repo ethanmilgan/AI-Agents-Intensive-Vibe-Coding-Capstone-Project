@@ -32,16 +32,17 @@ async def check_linkedin_session() -> dict:
         "message": "User is logged in to LinkedIn." if logged_in else "LinkedIn session is expired or missing."
     }
 
-async def login_to_linkedin(timeout_seconds: int = 300) -> dict:
+async def login_to_linkedin(app_id: int = None, timeout_seconds: int = 300) -> dict:
     """Launches a headful browser for manual login and waits for resolution.
     
     Args:
+        app_id: Optional ID of the database application record to log steps and updates.
         timeout_seconds: Time in seconds to wait for manual login.
         
     Returns:
         A dictionary containing the login outcome status.
     """
-    success = await asyncio.to_thread(login_to_linkedin_sync, None, timeout_seconds)
+    success = await asyncio.to_thread(login_to_linkedin_sync, app_id, timeout_seconds)
     if success:
         return {
             "status": "success",
