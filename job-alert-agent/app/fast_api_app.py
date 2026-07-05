@@ -462,19 +462,28 @@ def run_apply(req: ApplyRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": f"Error running job application: {e}"})
 
-async def run_linkedin_login_background(timeout_seconds: int):
+async def run_linkedin_login_background(app_id: int, timeout_seconds: int):
     from app.easy_agent.tools import login_to_linkedin
     try:
-        await login_to_linkedin(timeout_seconds=timeout_seconds)
+        await login_to_linkedin(app_id=app_id, timeout_seconds=timeout_seconds)
     except Exception:
         pass
 
 @app.post("/api/linkedin/login")
 def linkedin_login(background_tasks: BackgroundTasks):
     try:
+        from app.database import create_application
+        # Create a special application record for the login tracking
+        app_id = create_application(
+            job_url="https://www.linkedin.com/login",
+            job_title="LinkedIn Authentication",
+            company="LinkedIn",
+            candidate_profile={},
+            resume_path=""
+        )
         # Launch headful Chromium in a background task
-        background_tasks.add_task(run_linkedin_login_background, 300)
-        return {"status": "success", "message": "Interactive login window launched in background"}
+        background_tasks.add_task(run_linkedin_login_background, app_id, 300)
+        return {"status": "success", "message": "Interactive login window launched in background", "application_id": app_id}
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": f"Error launching login: {e}"})
 
@@ -486,6 +495,86 @@ async def linkedin_status():
         return res
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": f"Error checking session status: {e}"})
+
+@app.post("/api/reset")
+def reset_app():
+    # 1. Reset candidate_profile.json
+    try:
+        empty_profile = {
+            "personal_info": {
+                "full_name": "",
+                "email": "",
+                "phone": "",
+                "location": "",
+                "linkedin": "",
+                "github": "",
+                "resume_path": ""
+            },
+            "skills": {
+                "languages": [],
+                "databases": [],
+                "tools_and_platforms": [],
+                "analytical_skills": []
+            },
+            "education": [],
+            "experience": []
+        }
+        with open(PROFILE_PATH, "w", encoding="utf-8") as f:
+            json.dump(empty_profile, f, indent=2)
+    except Exception as e:
+        print(f"Error resetting profile: {e}")
+
+    # 2. Reset env vars in os.environ and clean .env
+    user_env_vars = [
+        "JOB_KEYWORDS", "JOB_LOCATION", "RECIPIENT_EMAIL", "JOB_EXPERIENCE", 
+        "ALERT_FREQUENCY", "EMAIL_JOB_LIMIT", "LINKEDIN_USERNAME", "LINKEDIN_PASSWORD"
+    ]
+    for var in user_env_vars:
+        if var in os.environ:
+            del os.environ[var]
+            
+    if os.path.exists(ENV_PATH):
+        try:
+            with open(ENV_PATH, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                should_keep = True
+                for var in user_env_vars:
+                    if line.strip().startswith(f"{var}="):
+                        should_keep = False
+                        break
+                if should_keep:
+                    new_lines.append(line)
+            with open(ENV_PATH, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+        except Exception as e:
+            print(f"Error updating .env: {e}")
+
+    # 3. Clear Playwright storage state cookies and profiles
+    profile_dir = os.environ.get("PLAYWRIGHT_PROFILE_DIR") or os.path.join(AGENT_DIR, ".playwright_profile")
+    if os.path.exists(profile_dir):
+        import shutil
+        try:
+            shutil.rmtree(profile_dir)
+        except Exception as e:
+            print(f"Error removing playwright profile dir: {e}")
+
+    # 4. Clear SQLite database tables
+    try:
+        from app.database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM applications")
+        cursor.execute("DELETE FROM hitl_prompts")
+        cursor.execute("DELETE FROM qa_cache")
+        cursor.execute("DELETE FROM application_logs")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error clearing database: {e}")
+
+    return {"status": "success", "message": "App session started fresh. All user configurations, profiles, cookies, and job application logs have been fully wiped."}
 
 # Serve static screenshots files
 screenshots_dir = os.path.join(AGENT_DIR, "screenshots")

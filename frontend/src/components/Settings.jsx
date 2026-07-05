@@ -95,6 +95,7 @@ export default function Settings({ onProfileUpdated }) {
       const data = await res.json();
       if (data.status === 'success') {
         alert("Profile saved successfully!");
+        if (onProfileUpdated) onProfileUpdated();
       } else {
         alert("Save failed: " + data.message);
       }
@@ -118,6 +119,7 @@ export default function Settings({ onProfileUpdated }) {
       const data = await res.json();
       if (data.status === 'success') {
         alert("Credentials saved to .env!");
+        if (onProfileUpdated) onProfileUpdated();
         fetchSettings();
       } else {
         alert("Save failed: " + data.message);
@@ -185,6 +187,27 @@ export default function Settings({ onProfileUpdated }) {
       alert("Failed to launch login browser window.");
     } finally {
       setLaunchingLogin(false);
+    }
+  };
+
+  const handleResetSession = async () => {
+    if (!window.confirm("WARNING: This will permanently wipe your candidate profile, LinkedIn login credentials/cookies, search preferences, and job application database history. Are you sure you want to start fresh?")) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        alert(data.message);
+        fetchProfile();
+        fetchSettings();
+        if (onProfileUpdated) onProfileUpdated();
+      } else {
+        alert("Reset failed: " + data.message);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error resetting session");
     }
   };
 
@@ -308,6 +331,21 @@ export default function Settings({ onProfileUpdated }) {
               {isSavingSettings ? 'Saving...' : 'Save Secrets to .env'}
             </button>
           </form>
+
+          {/* Reset Session / Danger Zone */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <h3 style={{ color: '#ef4444' }}>Danger Zone</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Wipe all login cookies, credentials, environment variables, SQLite job logs, candidate profile data, and ingested resumes to start a completely fresh session.
+            </p>
+            <button 
+              className="btn-primary" 
+              onClick={handleResetSession}
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid #ef4444', fontWeight: '600' }}
+            >
+              Reset Session & Start Fresh
+            </button>
+          </div>
         </div>
 
         {/* Right Column: Profile fields & Email Alert Config */}
